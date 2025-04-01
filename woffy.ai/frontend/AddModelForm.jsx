@@ -39,8 +39,6 @@ const AddModelForm = () => {
     
     if (!formData.apiName.trim()) {
       newErrors.apiName = 'API name is required';
-    } else if (!/^[a-zA-Z0-9_-]+$/.test(formData.apiName)) {
-      newErrors.apiName = 'API name should only contain letters, numbers, underscores, and hyphens';
     }
     
     setErrors(newErrors);
@@ -131,12 +129,12 @@ const AddModelForm = () => {
                 id="apiName"
                 name="apiName"
                 className="form-control"
-                placeholder="e.g. gpt-4-turbo"
+                placeholder="e.g. deepseek/deepseek-v3-base:free"
                 value={formData.apiName}
                 onChange={handleChange}
               />
               {errors.apiName && <p className="error">{errors.apiName}</p>}
-              <p className="description">The model identifier used for API calls</p>
+              <p className="description">The model identifier used for API calls (any format accepted)</p>
             </div>
             
             <div className="form-group">

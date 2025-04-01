@@ -1,14 +1,8 @@
 [
   {
-    "name to show": "r",
-    "api_name": "r",
+    "name to show": "deepseek v3",
+    "api_name": "deepseek/deepseek-v3-base:free",
     "description": "",
-    "added_at": "2025-04-01T18:53:11.458Z"
-  },
-  {
-    "name to show": "ttt",
-    "api_name": "rrt",
-    "description": "",
-    "added_at": "2025-04-01T18:54:54.334Z"
+    "added_at": "2025-04-01T19:02:45.335Z"
   }
 ]
