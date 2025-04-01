@@ -1,9 +1,11 @@
 import React from 'react';
+import ChatPage from './components/ChatPage';
+import './App.css';
 
 function App() {
   return (
-    <div>
-      <h1>Hello from Woffy</h1>
+    <div className="app">
+      <ChatPage />
     </div>
   );
 }
