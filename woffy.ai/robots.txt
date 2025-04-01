@@ -1,0 +1,64 @@
+# Woffy.ai Project Instructions for AI Agents
+
+# Project Overview
+User-Agent: *
+# Woffy.ai is a React-based chat application with a black and gold themed UI.
+# It features a chat interface with simulated AI responses and allows adding new AI models.
+
+# Key Features
+# - Chat interface (/) with message bubbles for user and AI
+# - Add Model page (/add-model) for configuring new AI models
+# - Navigation bar for switching between pages
+# - Modern black and gold UI theme
+
+# Project Structure
+# /woffy.ai
+#  ├── src/                  # Main source files
+#  │   ├── components/       # React components
+#  │   │   ├── ChatPage.jsx  # Chat interface component
+#  │   │   └── NavBar.jsx    # Navigation bar component
+#  │   ├── styles/           # CSS style files
+#  │   ├── App.jsx           # Main app component with routing
+#  │   └── main.jsx          # Entry point
+#  ├── frontend/             # Additional frontend components
+#  │   └── AddModelForm.jsx  # Form for adding models
+#  ├── api/                  # API handlers (not used with current Vite config)
+#  │   └── add-model.js      # Original API endpoint (superseded by Vite middleware)
+#  ├── model.json            # Stores the current model configuration
+#  └── vite.config.js        # Vite configuration with API middleware
+
+# Common Issues and Solutions
+# 1. Node.js Version
+#    - Project requires Node.js v18+ due to crypto.getRandomValues usage
+#    - If you encounter "TypeError: crypto$2.getRandomValues is not a function", upgrade Node.js
+
+# 2. API Handling
+#    - The Add Model feature uses a custom Vite middleware defined in vite.config.js
+#    - API requests are handled directly in the development server
+#    - Model data is saved to model.json in the project root
+
+# 3. Model JSON Format
+#    - The model.json file should follow this format:
+#      {
+#        "name to show": "Display Name", 
+#        "api_name": "api-model-name",
+#        "description": "Model description",
+#        "added_at": "ISO timestamp"
+#      }
+
+# Configuration Notes
+# - React Router is used for navigation between pages
+# - No backend server is required; API requests are handled by Vite middleware
+# - CSS variables are used for consistent theming across components
+
+# Development Instructions
+# - Run "npm run dev" to start the development server
+# - The application will be available at http://localhost:5173 (or another port if 5173 is in use)
+# - Changes to model.json are made through the Add Model form, not direct file edits
+
+# Theme Colors
+# - Primary background: #121212
+# - Secondary background: #1e1e1e
+# - Accent gold: #d4af37
+# - Text light: #f0f0f0
+# - Text dark: #121212 
