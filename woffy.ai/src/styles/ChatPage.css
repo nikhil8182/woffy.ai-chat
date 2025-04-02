@@ -466,10 +466,13 @@ body, html {
     padding: 0.8rem 0.8rem 1.2rem;
     position: sticky;
     bottom: 0;
+    left: 0;
+    width: 100%;
     background-color: var(--primary-bg);
     box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
-    z-index: 10;
+    z-index: 100;
     border-top: 1px solid rgba(212, 175, 55, 0.15);
+    display: block;
   }
   
   .message-bubble {
@@ -564,25 +567,34 @@ body, html {
   
   .input-container {
     margin-top: 0.3rem;
+    position: relative;
+    display: flex;
+    width: 100%;
   }
   
   .message-input {
+    display: block;
+    width: 100%;
     padding: 0.8rem 3.5rem 0.8rem 1rem; /* Ensure space for the send button */
     font-size: 15px;
     border-radius: 24px;
     min-height: 50px; /* Better touch target */
     background-color: rgba(42, 37, 17, 0.7); /* Match the style from screenshot */
     border-color: rgba(212, 175, 55, 0.4);
+    flex: 1;
   }
   
   .send-button {
+    position: absolute;
     width: 42px;
     height: 42px;
     right: 4px;
-    bottom: 4px;
+    top: 50%;
+    transform: translateY(-50%);
     padding: 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
     background-color: var(--accent-gold);
+    z-index: 101;
   }
   
   .send-icon {
