@@ -4,5 +4,11 @@
     "api_name": "deepseek/deepseek-v3-base:free",
     "description": "",
     "added_at": "2025-04-01T19:02:45.335Z"
+  },
+  {
+    "name to show": "GPT-4o (OpenAI)",
+    "api_name": "openai/gpt-4o",
+    "description": "OpenAI's latest flagship model.",
+    "added_at": "2025-04-02T13:25:00.000Z" 
   }
 ]

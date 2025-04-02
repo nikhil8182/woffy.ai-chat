@@ -2,56 +2,69 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/ChatPage.css';
 
+// Helper function to format messages for API
+const formatMessagesForApi = (msgs) => {
+  return msgs
+    .filter(msg => !msg.isSystem) // Exclude system messages
+    .map(msg => ({
+      role: msg.isUser ? 'user' : 'assistant',
+      content: msg.text,
+    }));
+};
+
 const ChatPage = () => {
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hello! I'm Woffy. How can I help you today?", isUser: false }
-  ]);
+  const [messages, setMessages] = useState([]); // Start with empty, models will populate initial message
   const [inputValue, setInputValue] = useState('');
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState(null); // Add error state
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   // Fetch available models on component mount
   useEffect(() => {
     const loadModels = async () => {
+      setError(null); // Clear previous errors
+      setIsLoading(true);
       try {
-        // In a real application, this would be an API fetch
-        // For this demo, we'll use a direct fetch to the JSON file
-        const response = await fetch('/model.json');
-        
+        const response = await fetch('/model.json'); // Assumes model.json is in the public folder
         if (!response.ok) {
-          throw new Error('Failed to load models');
+          throw new Error(`Failed to load models: ${response.statusText}`);
         }
-        
         const data = await response.json();
-        const modelArray = Array.isArray(data) ? data : [data];
+        const modelArray = Array.isArray(data) ? data : []; // Ensure it's an array
         setModels(modelArray);
         
-        // Set the first model as selected if available
         if (modelArray.length > 0) {
-          setSelectedModel(modelArray[0]);
-          // Add a system message about the selected model
-          setMessages(prev => [
-            ...prev,
+          const firstModel = modelArray[0];
+          setSelectedModel(firstModel);
+          setMessages([
             {
-              id: prev.length + 1,
-              text: `I'm using the ${modelArray[0]['name to show']} model. How can I help you?`,
+              id: Date.now(), // Use timestamp for potentially better unique ID
+              text: `Using ${firstModel['name to show']}. How can I help?`,
+              isUser: false,
+              isSystem: true
+            }
+          ]);
+        } else {
+           setMessages([
+            {
+              id: Date.now(),
+              text: 'No AI models found. Please add a model via the main menu.',
               isUser: false,
               isSystem: true
             }
           ]);
         }
-      } catch (error) {
-        console.error('Error loading models:', error);
-        // Add a fallback message
-        setMessages(prev => [
-          ...prev,
+      } catch (err) {
+        console.error('Error loading models:', err);
+        setError(err.message);
+        setMessages([
           {
-            id: prev.length + 1,
-            text: 'No AI models found. Please add a model in the "Add Model" page.',
+            id: Date.now(),
+            text: `Error loading models: ${err.message}. Please check console or add a model.`, 
             isUser: false,
             isSystem: true
           }
@@ -70,22 +83,21 @@ const ChatPage = () => {
   }, []);
 
   const handleModelChange = (e) => {
-    const modelId = parseInt(e.target.value, 10);
-    const model = models[modelId];
+    const modelIndex = parseInt(e.target.value, 10);
+    const model = models[modelIndex];
     setSelectedModel(model);
+    setError(null); // Clear error on model change
     
-    // Add a system message about changing the model
     setMessages(prev => [
       ...prev,
       {
-        id: prev.length + 1,
-        text: `Switched to the ${model['name to show']} model. How can I help you?`,
+        id: Date.now(),
+        text: `Switched to ${model['name to show']}. How can I help you?`,
         isUser: false,
         isSystem: true
       }
     ]);
 
-    // Focus back on input field
     inputRef.current?.focus();
   };
 
@@ -93,42 +105,100 @@ const ChatPage = () => {
     setInputValue(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // Make handleSubmit async
     e.preventDefault();
-    if (inputValue.trim() === '' || isSending) return;
+    if (inputValue.trim() === '' || isSending || isLoading || !selectedModel) return;
 
-    // Add user message
+    setError(null); // Clear previous errors
+    const userMessageId = Date.now();
     const newUserMessage = {
-      id: messages.length + 1,
+      id: userMessageId,
       text: inputValue,
       isUser: true,
     };
 
-    setMessages([...messages, newUserMessage]);
+    // Add user message to state immediately
+    const updatedMessages = [...messages, newUserMessage];
+    setMessages(updatedMessages); 
     setInputValue('');
     setIsSending(true);
 
-    // Simulate AI response (would be replaced with actual API call)
-    setTimeout(() => {
-      let responseText = "I'm just a demo version of Woffy. In a real application, I would respond to your message intelligently!";
-      
-      if (selectedModel) {
-        responseText += ` (Using ${selectedModel['name to show']} model)`;
+    // --- Start API Call --- 
+    const messagesToSend = formatMessagesForApi(updatedMessages); // Format messages for backend
+    const modelApiName = selectedModel?.api_name;
+
+    // Double check model is selected (should be covered by initial check, but good practice)
+    if (!modelApiName) {
+        console.error("No model selected!");
+        setError("No model selected!"); 
+        setIsSending(false);
+        return;
+    }
+
+    try {
+      const backendUrl = 'http://localhost:8000/api/chat'; // FastAPI backend URL
+      const response = await fetch(backendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelApiName,
+          messages: messagesToSend,
+        }),
+      });
+
+      let responseToAdd; // To store the message object to add to state
+
+      if (!response.ok) {
+        let errorDetail = 'Failed to get response from AI.';
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || JSON.stringify(errorData);
+        } catch (parseError) {
+          // If parsing error JSON fails, use the status text
+          errorDetail = response.statusText;
+        }
+        console.error('Backend error:', response.status, errorDetail);
+        setError(`Error ${response.status}: ${errorDetail}`); 
+        // Create an error message object to display in chat
+        responseToAdd = {
+          id: Date.now(),
+          text: `Error: ${errorDetail}`,
+          isUser: false,
+          isSystem: true, // Show backend errors as system messages
+        };
+
       } else {
-        responseText += " No AI model is currently selected.";
+        // Process successful response
+        const backendMessage = await response.json(); // { role: 'assistant', content: '...' }
+        // Create a message object for the chat state
+        responseToAdd = {
+          id: Date.now(), 
+          text: backendMessage.content,
+          isUser: false, // AI response is never from the user
+        };
       }
-      
-      const aiResponse = {
-        id: messages.length + 2,
-        text: responseText,
+      // Add the AI's response (or error message) to the state
+      setMessages(currentMessages => [...currentMessages, responseToAdd]);
+
+    } catch (err) {
+      console.error('Network or other error sending message:', err);
+      setError(`Network Error: ${err.message}`);
+      // Create a network error message object
+      const networkErrorResponse = {
+        id: Date.now(), 
+        text: `Network Error: Could not reach AI service. (${err.message})`,
         isUser: false,
+        isSystem: true, // Show network errors as system messages
       };
-      setMessages(prevMessages => [...prevMessages, aiResponse]);
-      setIsSending(false);
-      
-      // Focus back on input field
-      inputRef.current?.focus();
-    }, 1500);
+      setMessages(currentMessages => [...currentMessages, networkErrorResponse]);
+    } finally {
+      setIsSending(false); // Stop loading indicator regardless of success/failure
+      // Optional: Focus back on input field only on success?
+      // inputRef.current?.focus(); 
+    }
+    // --- End API Call ---
   };
 
   // Auto-scroll to bottom when messages change
@@ -155,25 +225,32 @@ const ChatPage = () => {
         <>
           {models.length > 0 ? (
             <div className="model-selector">
-              <label htmlFor="model-select">Choose an AI model:</label>
+              <label htmlFor="model-select">AI Model:</label>
               <select 
                 id="model-select"
+                value={models.findIndex(m => m.api_name === selectedModel?.api_name)} // Control select value
                 onChange={handleModelChange}
                 className="model-select"
+                disabled={isSending} // Disable while sending
               >
                 {models.map((model, index) => (
-                  <option key={index} value={index}>
+                  <option key={model.api_name || index} value={index}>
                     {model['name to show']}
                   </option>
                 ))}
               </select>
             </div>
           ) : (
-            <div className="no-models-banner">
-              <p>No AI models available.</p>
-              <Link to="/add-model" className="add-model-link">Add your first model</Link>
-            </div>
+            !error && (
+              <div className="no-models-banner">
+                 <p>No AI models loaded.</p>
+                 {/* Consider adding a Link to an 'add model' page if applicable */}
+                 {/* <Link to="/add-model" className="add-model-link">Add a model</Link> */}
+              </div>
+            )
           )}
+
+          {error && <div className="chat-error-banner">Error: {error}</div>} 
           
           <div className="messages-container">
             {messages.map((message) => (
@@ -204,23 +281,23 @@ const ChatPage = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <form className="input-form" onSubmit={handleSubmit}>
-            <input
-              type="text"
+          <form onSubmit={handleSubmit} className="input-form">
+            <textarea
               ref={inputRef}
               value={inputValue}
               onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder={isSending ? "Woffy is typing..." : "Type your message here..."}
-              className="message-input"
-              disabled={isSending || models.length === 0}
+              onKeyDown={handleKeyDown} // Use onKeyDown for Enter press
+              placeholder={selectedModel ? `Message ${selectedModel['name to show']}...` : "Select a model first..."}
+              className="chat-input"
+              rows="1" // Start with 1 row, CSS will handle expansion
+              disabled={isSending || isLoading || !selectedModel || error}
             />
             <button 
               type="submit" 
-              className="send-button"
-              disabled={isSending || inputValue.trim() === '' || models.length === 0}
+              className="send-button" 
+              disabled={isSending || isLoading || !selectedModel || inputValue.trim() === '' || error}
             >
-              {isSending ? "Sending..." : "Send"}
+              Send
             </button>
           </form>
         </>
@@ -229,4 +306,4 @@ const ChatPage = () => {
   );
 };
 
-export default ChatPage; 
+export default ChatPage;
