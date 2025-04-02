@@ -220,7 +220,13 @@ const ChatPage = () => {
     }
 
     try {
-      const backendUrl = 'http://localhost:8000/api/chat'; // FastAPI backend URL
+      // Construct the backend URL dynamically
+      const baseApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'; // Default to localhost if var not set
+      const backendUrl = `${baseApiUrl}/api/chat`;
+
+      // Log the URL being used for debugging
+      console.log("Sending request to:", backendUrl);
+
       const response = await fetch(backendUrl, {
         method: 'POST',
         headers: {
