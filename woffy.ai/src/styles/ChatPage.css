@@ -132,11 +132,7 @@ body, html {
   color: var(--accent-gold);
 }
 
-.model-select-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* Model select container removed */
 
 .model-select {
   padding: 0.6rem 0.8rem;
@@ -170,6 +166,11 @@ body, html {
   background-color: var(--input-bg);
   color: var(--text-light);
   padding: 0.5rem;
+}
+
+.model-select-standalone {
+  max-width: 300px;
+  margin-left: 10px;
 }
 
 /* Refresh models button removed */
@@ -780,11 +781,7 @@ body, html {
     background-position: right 0.5rem center;
   }
   
-  .refresh-models-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px; /* Ensure minimum width */
-  }
+  /* Refresh models button removed */
   
   .message-avatar {
     width: 28px;

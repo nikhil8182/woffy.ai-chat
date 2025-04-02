@@ -471,22 +471,20 @@ const ChatPage = () => {
           {models.length > 0 ? (
             <div className="model-selector">
               <label htmlFor="model-select">AI Model:</label>
-              <div className="model-select-container">
-                <select 
-                  id="model-select"
-                  value={models.findIndex(m => m.api_name === selectedModel?.api_name)} // Control select value
-                  onChange={handleModelChange}
-                  className="model-select"
-                  disabled={isSending} // Disable while sending
-                >
-                  {models.map((model, index) => (
-                    <option key={model.api_name || index} value={index}>
-                      {model['name to show']}
-                    </option>
-                  ))}
-                </select>
-                {/* Refresh models button removed */}
-              </div>
+              {/* Completely rebuilt model selector without the refresh button */}
+              <select 
+                id="model-select"
+                value={models.findIndex(m => m.api_name === selectedModel?.api_name)}
+                onChange={handleModelChange}
+                className="model-select model-select-standalone"
+                disabled={isSending}
+              >
+                {models.map((model, index) => (
+                  <option key={model.api_name || index} value={index}>
+                    {model['name to show']}
+                  </option>
+                ))}
+              </select>
               {/* Instruction indicator removed */}
             </div>
           ) : (
