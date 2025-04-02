@@ -424,9 +424,7 @@ const ChatPage = () => {
             </div>
             {error && <div className="input-error">{error}</div>}
           </form>
-          <p style={{ position: 'fixed', bottom: '5px', right: '10px', fontSize: '0.7rem', color: '#aaa', zIndex: 10 }}>
-            API Base: {baseApiUrl}
-          </p>
+          {/* Backend URL debug display removed */}
         </>
       )}
     </div>
