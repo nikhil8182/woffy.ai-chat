@@ -10,22 +10,16 @@ const renderer = new marked.Renderer();
 // Original code block renderer
 const originalCodeRenderer = renderer.code.bind(renderer);
 
-// Custom renderer to add copy button to code blocks
+// Custom renderer for code blocks without copy buttons
 renderer.code = function(code, language) {
   // Get original HTML from default renderer
   const html = originalCodeRenderer(code, language);
   
-  // Wrap the HTML with a container that includes a copy button
+  // Wrap the HTML with a container and language header but no copy button
   return `
     <div class="code-block-container">
       <div class="code-block-header">
         ${language ? `<span class="code-language">${language}</span>` : ''}
-        <button class="copy-code-btn" onclick="copyCodeToClipboard(this)" aria-label="Copy code" title="Copy code">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-            <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path>
-            <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
-          </svg>
-        </button>
       </div>
       ${html}
     </div>
@@ -45,38 +39,7 @@ const formatMessagesForApi = (msgs) => {
     }));
 };
 
-// Function to copy code from a code block
-const copyCodeToClipboard = (button) => {
-  // Find the code element within the container
-  const codeContainer = button.closest('.code-block-container');
-  const codeElement = codeContainer.querySelector('code');
-  
-  if (codeElement) {
-    // Get text content from the code element
-    const codeText = codeElement.textContent;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(codeText)
-      .then(() => {
-        // Show success indicator
-        const originalHTML = button.innerHTML;
-        button.innerHTML = `<span>✓</span>`;
-        button.classList.add('copied');
-        
-        // Reset after a delay
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-          button.classList.remove('copied');
-        }, 2000);
-      })
-      .catch(err => {
-        console.error('Failed to copy code: ', err);
-      });
-  }
-};
-
-// Make the function globally available
-window.copyCodeToClipboard = copyCodeToClipboard;
+// Copy code function removed
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([]); // Start with empty, models will populate initial message
