@@ -147,7 +147,8 @@ async def chat_endpoint(request: ChatRequest):
         
         completion = await client.chat.completions.create(
             model=request.model,
-            messages=messages
+            messages=messages,
+            max_tokens=1024  # Limiting max tokens to prevent credit issues
         )
         
         # Add safety checks to avoid NoneType errors
@@ -177,6 +178,34 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+# --- Models Endpoint ---
+@app.post("/api/save-models")
+async def save_models(models: List[Dict[str, Any]]):
+    """Save models to model.json file."""
+    try:
+        # Define the path to the model.json file in the public directory
+        models_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "woffy.ai", "public", "model.json")
+        
+        # Ensure the models are in the expected format
+        formatted_models = []
+        for model in models:
+            formatted_model = {
+                "name to show": model.get("name to show", model.get("name", model.get("api_name", ""))),
+                "api_name": model.get("api_name", ""),
+                "description": model.get("description", ""),
+                "added_at": model.get("added_at", "") 
+            }
+            formatted_models.append(formatted_model)
+        
+        # Write the models to the file
+        with open(models_file, 'w') as f:
+            json.dump(formatted_models, f, indent=2)
+        
+        return {"status": "success", "message": "Models saved successfully"}
+    except Exception as e:
+        logger.error(f"Error saving models: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save models: {str(e)}")
 
 # --- Root Endpoint (Optional) --- 
 @app.get("/")
