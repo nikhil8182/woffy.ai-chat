@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
@@ -184,24 +185,35 @@ async def chat_endpoint(request: ChatRequest):
 async def save_models(models: List[Dict[str, Any]]):
     """Save models to model.json file."""
     try:
-        # In production (Render), the model.json file is at the root level
-        # In development, it's in the woffy.ai/public directory
-        # Try both locations
+        # Log the incoming request for debugging
+        logger.info(f"Received request to save {len(models)} models")
         
-        # Production path (Render deployment)
-        production_path = os.path.join(os.path.dirname(__file__), "model.json")
+        # Possible paths for model.json
+        possible_paths = [
+            # Render deployment path - app root
+            os.path.join(os.path.dirname(__file__), "model.json"),
+            # Render deployment path - backend folder
+            os.path.join(os.path.dirname(__file__), "public", "model.json"),
+            # Development path
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "woffy.ai", "public", "model.json")
+        ]
         
-        # Development path (local setup)
-        dev_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "woffy.ai", "public", "model.json")
-        
-        # Determine which path to use
-        if os.path.exists(os.path.dirname(dev_path)):
-            models_file = dev_path
-        else:
-            models_file = production_path
+        # Find the first valid path
+        models_file = None
+        for path in possible_paths:
+            # Check if the directory exists
+            if os.path.exists(os.path.dirname(path)):
+                models_file = path
+                logger.info(f"Using path: {models_file}")
+                break
+                
+        # If no valid path found, default to backend directory
+        if not models_file:
+            models_file = os.path.join(os.path.dirname(__file__), "model.json")
+            logger.info(f"No valid path found, defaulting to: {models_file}")
             
-        # Create directory if it doesn't exist (for production environment)
-        os.makedirs(os.path.dirname(models_file), exist_ok=True)
+            # Create directory if needed
+            os.makedirs(os.path.dirname(models_file), exist_ok=True)
         
         # Ensure the models are in the expected format
         formatted_models = []
@@ -219,10 +231,20 @@ async def save_models(models: List[Dict[str, Any]]):
             json.dump(formatted_models, f, indent=2)
         
         logger.info(f"Models saved successfully to {models_file}")
-        return {"status": "success", "message": "Models saved successfully", "path": models_file}
+        
+        # Return a simple response structure to avoid JSON parsing issues
+        return {
+            "status": "success", 
+            "message": "Models saved successfully", 
+            "count": len(formatted_models)
+        }
     except Exception as e:
         logger.error(f"Error saving models: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save models: {str(e)}")
+        # Return a simple error structure
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": f"Failed to save models: {str(e)}"}
+        )
 
 # --- Root Endpoint (Optional) --- 
 @app.get("/")
