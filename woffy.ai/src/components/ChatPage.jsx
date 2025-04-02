@@ -538,42 +538,7 @@ const ChatPage = () => {
                             }}
                           />
                         )}
-                        {!message.isSystem && (
-                          <button 
-                            className="copy-message-btn" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(message.text)
-                                .then(() => {
-                                  // Show temporary success feedback
-                                  const btn = e.currentTarget;
-                                  // Store original content - the SVG
-                                  const svgContent = btn.innerHTML;
-                                  // Create a checkmark span
-                                  const checkmark = document.createElement('span');
-                                  checkmark.textContent = '✓';
-                                  // Clear and add checkmark
-                                  btn.innerHTML = '';
-                                  btn.appendChild(checkmark);
-                                  btn.classList.add('copied');
-                                  
-                                  setTimeout(() => {
-                                    // Restore the SVG
-                                    btn.innerHTML = svgContent;
-                                    btn.classList.remove('copied');
-                                  }, 2000);
-                                })
-                                .catch(err => console.error('Could not copy text: ', err));
-                            }} 
-                            aria-label="Copy message"
-                            title="Copy message"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                              <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path>
-                              <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
-                            </svg>
-                          </button>
-                        )}
+                        {/* Copy message button removed */}
                       </div>
                     </div>
                   </div>
