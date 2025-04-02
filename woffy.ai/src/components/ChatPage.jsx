@@ -20,22 +20,73 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null); // Add error state
+  const [inputRows, setInputRows] = useState(1); // Track textarea rows
+  const [hasInstruction, setHasInstruction] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
-  // Fetch available models on component mount
+  // Function to fetch the latest models
+  const fetchModels = async () => {
+    try {
+      // Always fetch the latest model.json from the server
+      const timestamp = new Date().getTime(); // Add timestamp to prevent caching
+      const modelResponse = await fetch(`/model.json?t=${timestamp}`);
+      if (!modelResponse.ok) {
+        throw new Error(`Failed to load models: ${modelResponse.statusText}`);
+      }
+      const modelData = await modelResponse.json();
+      const modelArray = Array.isArray(modelData) ? modelData : []; // Ensure it's an array
+      setModels(modelArray);
+      console.log('Models refreshed successfully:', modelArray);
+      return modelArray;
+    } catch (error) {
+      console.error('Error fetching models:', error);
+      throw error;
+    }
+  };
+
+  // Fetch available models and instructions on component mount
   useEffect(() => {
-    const loadModels = async () => {
+    const loadData = async () => {
       setError(null); // Clear previous errors
       setIsLoading(true);
+      
+      // First set a default message while loading
+      setMessages([{
+        id: Date.now(),
+        text: 'Loading AI models...',
+        isUser: false,
+        isSystem: true
+      }]);
+      
       try {
-        const response = await fetch('/model.json'); // Assumes model.json is in the public folder
-        if (!response.ok) {
-          throw new Error(`Failed to load models: ${response.statusText}`);
+        // Fetch models
+        let modelArray = [];
+        try {
+          modelArray = await fetchModels();
+          console.log('Models loaded successfully:', modelArray);
+        } catch (modelErr) {
+          console.error('Error loading models:', modelErr);
+          throw new Error(`Could not load models: ${modelErr.message}`);
         }
-        const data = await response.json();
-        const modelArray = Array.isArray(data) ? data : []; // Ensure it's an array
-        setModels(modelArray);
+        
+        // Fetch instruction - this is non-critical
+        try {
+          const instructionResponse = await fetch('http://localhost:8000/api/instructions');
+          if (instructionResponse.ok) {
+            const instructionData = await instructionResponse.json();
+            const hasInst = instructionData && instructionData.instruction && instructionData.instruction.trim() !== '';
+            setHasInstruction(hasInst);
+            console.log('Instruction loaded successfully:', instructionData);
+          }
+        } catch (instructionErr) {
+          console.warn('Could not load instruction:', instructionErr);
+          // Don't throw error for instruction - non-critical
+        }
+        
+        // Clear loading state as we have the models now
+        setIsLoading(false);
         
         if (modelArray.length > 0) {
           const firstModel = modelArray[0];
@@ -60,6 +111,7 @@ const ChatPage = () => {
         }
       } catch (err) {
         console.error('Error loading models:', err);
+        setIsLoading(false);
         setError(err.message);
         setMessages([
           {
@@ -69,12 +121,10 @@ const ChatPage = () => {
             isSystem: true
           }
         ]);
-      } finally {
-        setIsLoading(false);
       }
     };
     
-    loadModels();
+    loadData(); // Call the loadData function instead of loadModels
 
     // Focus input after a short delay
     setTimeout(() => {
@@ -84,15 +134,28 @@ const ChatPage = () => {
 
   const handleModelChange = (e) => {
     const modelIndex = parseInt(e.target.value, 10);
+    if (isNaN(modelIndex) || modelIndex < 0 || modelIndex >= models.length) {
+      console.error('Invalid model index:', e.target.value);
+      return;
+    }
+    
     const model = models[modelIndex];
+    if (!model) {
+      console.error('Model not found at index:', modelIndex);
+      return;
+    }
+    
+    console.log('Selected model:', model);
     setSelectedModel(model);
     setError(null); // Clear error on model change
+    
+    // We now use a common instruction for all models
     
     setMessages(prev => [
       ...prev,
       {
         id: Date.now(),
-        text: `Switched to ${model['name to show']}. How can I help you?`,
+        text: `Switched to ${model['name to show']}${hasInstruction ? ' with custom instructions' : ''}. How can I help you?`,
         isUser: false,
         isSystem: true
       }
@@ -103,6 +166,27 @@ const ChatPage = () => {
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
+    
+    // Auto-resize textarea based on content
+    const textareaLineHeight = 24; // Approximate line height in pixels
+    const minRows = 1;
+    const maxRows = 5;
+    
+    const previousRows = e.target.rows;
+    e.target.rows = minRows; // Reset rows to calculate scroll height
+    
+    const currentRows = Math.floor(e.target.scrollHeight / textareaLineHeight);
+    
+    if (currentRows === previousRows) {
+      e.target.rows = currentRows;
+    }
+    
+    if (currentRows >= maxRows) {
+      e.target.rows = maxRows;
+      e.target.scrollTop = e.target.scrollHeight;
+    }
+    
+    setInputRows(Math.min(currentRows, maxRows));
   };
 
   const handleSubmit = async (e) => { // Make handleSubmit async
@@ -203,7 +287,14 @@ const ChatPage = () => {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      const { scrollHeight, clientHeight } = messagesContainerRef.current;
+      const maxScrollTop = scrollHeight - clientHeight;
+      messagesContainerRef.current.scrollTo({
+        top: maxScrollTop,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   // Handler for keydown events
@@ -226,19 +317,40 @@ const ChatPage = () => {
           {models.length > 0 ? (
             <div className="model-selector">
               <label htmlFor="model-select">AI Model:</label>
-              <select 
-                id="model-select"
-                value={models.findIndex(m => m.api_name === selectedModel?.api_name)} // Control select value
-                onChange={handleModelChange}
-                className="model-select"
-                disabled={isSending} // Disable while sending
-              >
-                {models.map((model, index) => (
-                  <option key={model.api_name || index} value={index}>
-                    {model['name to show']}
-                  </option>
-                ))}
-              </select>
+              <div className="model-select-container">
+                <select 
+                  id="model-select"
+                  value={models.findIndex(m => m.api_name === selectedModel?.api_name)} // Control select value
+                  onChange={handleModelChange}
+                  className="model-select"
+                  disabled={isSending} // Disable while sending
+                >
+                  {models.map((model, index) => (
+                    <option key={model.api_name || index} value={index}>
+                      {model['name to show']}
+                    </option>
+                  ))}
+                </select>
+                <button 
+                  className="refresh-models-btn" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    fetchModels().then(newModels => {
+                      if (newModels.length > 0 && (!selectedModel || !newModels.find(m => m.api_name === selectedModel.api_name))) {
+                        setSelectedModel(newModels[0]);
+                      }
+                    });
+                  }}
+                  disabled={isSending}
+                >
+                  ↻
+                </button>
+              </div>
+              {hasInstruction && (
+                <div className="instruction-indicator" title="Custom instructions are enabled">
+                  <span className="instruction-icon">📝</span>
+                </div>
+              )}
             </div>
           ) : (
             !error && (
@@ -252,7 +364,7 @@ const ChatPage = () => {
 
           {error && <div className="chat-error-banner">Error: {error}</div>} 
           
-          <div className="messages-container">
+          <div className="messages-container" ref={messagesContainerRef}>
             {messages.map((message) => (
               <div 
                 key={message.id} 
@@ -260,7 +372,7 @@ const ChatPage = () => {
               >
                 {!message.isSystem && (
                   <div className="message-avatar">
-                    {message.isUser ? '👤' : '🤖'}
+                    {message.isUser ? '👤' : '🐶'}
                   </div>
                 )}
                 <div className="message-bubble">
@@ -270,7 +382,7 @@ const ChatPage = () => {
             ))}
             {isSending && (
               <div className="message ai-message typing-indicator">
-                <div className="message-avatar">🤖</div>
+                <div className="message-avatar">🐶</div>
                 <div className="message-bubble">
                   <span className="typing-dot"></span>
                   <span className="typing-dot"></span>
@@ -282,23 +394,26 @@ const ChatPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="input-form">
-            <textarea
-              ref={inputRef}
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown} // Use onKeyDown for Enter press
-              placeholder={selectedModel ? `Message ${selectedModel['name to show']}...` : "Select a model first..."}
-              className="chat-input"
-              rows="1" // Start with 1 row, CSS will handle expansion
-              disabled={isSending || isLoading || !selectedModel || error}
-            />
-            <button 
-              type="submit" 
-              className="send-button" 
-              disabled={isSending || isLoading || !selectedModel || inputValue.trim() === '' || error}
-            >
-              Send
-            </button>
+            <div className="input-container">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder={selectedModel ? `Message ${selectedModel['name to show']}...` : "Select a model first..."}
+                className="message-input"
+                rows={inputRows}
+                disabled={isSending || isLoading || !selectedModel || error}
+              />
+              <button 
+                type="submit" 
+                className="send-button" 
+                disabled={isSending || isLoading || !selectedModel || inputValue.trim() === '' || error}
+              >
+                <span className="send-icon">➤</span>
+              </button>
+            </div>
+            {error && <div className="input-error">{error}</div>}
           </form>
         </>
       )}

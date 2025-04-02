@@ -2,10 +2,14 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from openai import OpenAI, AsyncOpenAI, APIError
 import logging
+import json
+import os
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +18,10 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file
 load_dotenv()
 
-app = FastAPI()
+# Path to the instructions file
+INSTRUCTIONS_FILE = os.path.join(os.path.dirname(__file__), "instructions.json")
+
+app = FastAPI(title="Woffy.ai API", description="Backend API for Woffy.ai chat interface")
 
 # --- CORS Configuration --- 
 # Allow requests from your frontend development server
@@ -30,8 +37,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["POST"], # Allow only POST for the chat endpoint
-    allow_headers=["*"], # Allow all headers
+    allow_methods=["*"],  # Allow all methods including GET, POST, etc.
+    allow_headers=["*"],  # Allow all headers
 )
 
 # --- OpenRouter Configuration --- 
@@ -67,18 +74,75 @@ class ChatRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
 
-# --- API Endpoint --- 
-@app.post("/api/chat", response_model=ChatMessage) # Define expected response model
+class InstructionRequest(BaseModel):
+    instruction: str
+
+# --- Helper Functions ---
+def get_instruction():
+    """Load the common instruction from the JSON file."""
+    try:
+        if os.path.exists(INSTRUCTIONS_FILE):
+            with open(INSTRUCTIONS_FILE, 'r') as f:
+                data = json.load(f)
+                return data.get('instruction', '')
+        else:
+            # Create empty instructions file if it doesn't exist
+            with open(INSTRUCTIONS_FILE, 'w') as f:
+                json.dump({'instruction': ''}, f)
+            return ''
+    except Exception as e:
+        logger.error(f"Error loading instruction: {e}")
+        return ''
+
+def save_instruction(instruction):
+    """Save the common instruction to the JSON file."""
+    try:
+        with open(INSTRUCTIONS_FILE, 'w') as f:
+            json.dump({'instruction': instruction}, f, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving instruction: {e}")
+        return False
+
+# --- API Endpoints --- 
+@app.get("/api/instructions")
+async def get_common_instruction():
+    """Get the common instruction for all models."""
+    return {"instruction": get_instruction()}
+
+@app.post("/api/instructions")
+async def update_common_instruction(request: InstructionRequest):
+    """Save the common instruction for all models."""
+    if save_instruction(request.instruction):
+        return {"status": "success", "message": "Common instruction saved for all models"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save instruction")
+
+@app.post("/api/chat", response_model=ChatMessage)
 async def chat_endpoint(request: ChatRequest):
     """Receives chat messages and proxies the request to OpenRouter."""
     if not openrouter_api_key:
          raise HTTPException(status_code=500, detail="Server configuration error: API key not set.")
 
     logger.info(f"Received request for model: {request.model}")
+    
+    # Get the common instruction if available
+    instruction = get_instruction()
+    
+    # Prepare messages with system instruction if available
+    messages = []
+    if instruction:
+        # Add system instruction as the first message
+        messages.append({"role": "system", "content": instruction})
+    
+    # Add user messages
+    for msg in request.messages:
+        messages.append(msg.dict())
+    
     try:
         completion = await client.chat.completions.create(
             model=request.model,
-            messages=[msg.dict() for msg in request.messages] # Convert Pydantic models to dicts
+            messages=messages
         )
         
         response_message = completion.choices[0].message

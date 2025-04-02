@@ -20,6 +20,12 @@ const NavBar = () => {
             Chat
           </Link>
           <Link 
+            to="/instructions" 
+            className={`nav-item ${location.pathname === '/instructions' ? 'active' : ''}`}
+          >
+            Instructions
+          </Link>
+          <Link 
             to="/add-model" 
             className={`nav-item ${location.pathname === '/add-model' ? 'active' : ''}`}
           >
