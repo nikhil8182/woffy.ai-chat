@@ -502,11 +502,19 @@ const ChatPage = () => {
                                 .then(() => {
                                   // Show temporary success feedback
                                   const btn = e.currentTarget;
-                                  const originalText = btn.innerHTML;
-                                  btn.innerHTML = '✓';
+                                  // Store original content - the SVG
+                                  const svgContent = btn.innerHTML;
+                                  // Create a checkmark span
+                                  const checkmark = document.createElement('span');
+                                  checkmark.textContent = '✓';
+                                  // Clear and add checkmark
+                                  btn.innerHTML = '';
+                                  btn.appendChild(checkmark);
                                   btn.classList.add('copied');
+                                  
                                   setTimeout(() => {
-                                    btn.innerHTML = originalText;
+                                    // Restore the SVG
+                                    btn.innerHTML = svgContent;
                                     btn.classList.remove('copied');
                                   }, 2000);
                                 })

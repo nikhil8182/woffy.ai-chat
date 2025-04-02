@@ -142,13 +142,32 @@ async def chat_endpoint(request: ChatRequest):
         messages.append(msg.dict())
     
     try:
+        # Log the actual messages being sent for debugging
+        logger.info(f"Sending the following messages to model {request.model}: {messages}")
+        
         completion = await client.chat.completions.create(
             model=request.model,
             messages=messages
         )
         
-        response_message = completion.choices[0].message
+        # Add safety checks to avoid NoneType errors
+        if not completion:
+            logger.error("Received None completion from OpenRouter API")
+            raise HTTPException(status_code=500, detail="Empty response from AI service")
+            
+        if not hasattr(completion, 'choices') or not completion.choices:
+            logger.error(f"No choices in completion response: {completion}")
+            raise HTTPException(status_code=500, detail="Invalid response format from AI service")
+        
+        # Get the first choice safely
+        choice = completion.choices[0]
+        if not hasattr(choice, 'message') or not choice.message:
+            logger.error(f"No message in response choice: {choice}")
+            raise HTTPException(status_code=500, detail="Invalid message format from AI service")
+        
+        response_message = choice.message
         logger.info("Successfully received response from OpenRouter.")
+        
         # Return the response message in the expected format
         return ChatMessage(role=response_message.role, content=response_message.content)
     
