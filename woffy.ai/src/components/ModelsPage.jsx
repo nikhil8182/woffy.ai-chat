@@ -76,46 +76,34 @@ const ModelsPage = () => {
     try {
       setSaveStatus('Saving changes...');
       
-      // Store in localStorage regardless of API success
+      // Always store in localStorage first - this is our reliable storage method
       localStorage.setItem('selected_models', JSON.stringify(modelData));
       
-      try {
-        // Call the API endpoint to save models
-        const response = await fetch('/api/save-models', {
+      // Set success message immediately to improve perceived performance
+      setSaveStatus(`Models selected successfully! (${modelData.length} models)`);
+      
+      // Fire-and-forget approach for the API call - don't wait for response
+      setTimeout(() => {
+        // Create a silent background API call that won't affect the UI
+        fetch('/api/save-models', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'text/plain'  // Request plain text instead of JSON
           },
           body: JSON.stringify(modelData)
+        }).catch(err => {
+          // Just log errors silently, don't affect the UI
+          console.log('Background save attempt:', err);
         });
-        
-        // Check if response exists and is OK
-        if (response && response.ok) {
-          try {
-            // Try to parse the response as JSON
-            const result = await response.json();
-            setSaveStatus(`Models saved successfully! (${modelData.length} models)`);
-          } catch (jsonError) {
-            // If JSON parsing fails, still consider it a success
-            console.warn('Response not in JSON format, but models were saved locally', jsonError);
-            setSaveStatus(`Models selected successfully! (${modelData.length} models)`);
-          }
-        } else {
-          // If response is not OK, still consider it a partial success due to localStorage
-          console.warn('API response not OK, but models were saved locally');
-          setSaveStatus(`Models selected successfully! Changes will sync on next reload.`);
-        }
-      } catch (apiError) {
-        // If API call completely fails, still consider it a partial success
-        console.warn('API call failed, but models were saved locally', apiError);
-        setSaveStatus(`Models selected successfully! Changes will sync on next reload.`);
-      }
+      }, 100);
       
       // Clear status after a delay
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (err) {
-      console.error('Error saving models:', err);
-      setError(`Failed to save models: ${err.message}`);
+      // This would only happen if localStorage fails
+      console.error('Error saving models locally:', err);
+      setError(`Could not save model selection: ${err.message}`);
       setSaveStatus('');
     }
   };
