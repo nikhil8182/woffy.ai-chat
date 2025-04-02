@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/ChatPage.css';
 
@@ -22,9 +22,11 @@ const ChatPage = () => {
   const [error, setError] = useState(null); // Add error state
   const [inputRows, setInputRows] = useState(1); // Track textarea rows
   const [hasInstruction, setHasInstruction] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true); // Track if auto-scrolling is enabled
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const touchStartRef = useRef(null); // Track touch start position for mobile
 
   // Function to fetch the latest models
   const fetchModels = async () => {
@@ -291,17 +293,92 @@ const ChatPage = () => {
     // --- End API Call ---
   };
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (messagesContainerRef.current) {
+  // Check if user is at the bottom of the chat
+  const isAtBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    
+    const tolerance = 10; // pixels of tolerance
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    return scrollHeight - scrollTop - clientHeight <= tolerance;
+  }, []);
+
+  // Scroll to bottom function
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    if (messagesContainerRef.current && autoScroll) {
       const { scrollHeight, clientHeight } = messagesContainerRef.current;
-      const maxScrollTop = scrollHeight - clientHeight;
-      messagesContainerRef.current.scrollTo({
-        top: maxScrollTop,
-        behavior: 'smooth'
+      requestAnimationFrame(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: scrollHeight - clientHeight,
+          behavior
+        });
       });
     }
-  }, [messages]);
+  }, [autoScroll]);
+
+  // Handle user scroll events
+  const handleScroll = useCallback(() => {
+    setAutoScroll(isAtBottom());
+  }, [isAtBottom]);
+
+  // Handle mouse wheel events
+  const handleWheel = useCallback((e) => {
+    if (e.deltaY < 0) { // scrolling up
+      setAutoScroll(false);
+    } else if (isAtBottom()) { // scrolling down and at bottom
+      setAutoScroll(true);
+    }
+  }, [isAtBottom]);
+
+  // Handle touch events for mobile
+  const handleTouchStart = useCallback((e) => {
+    touchStartRef.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!touchStartRef.current) return;
+    const touchEnd = e.touches[0].clientY;
+    const diff = touchStartRef.current - touchEnd;
+    
+    if (diff < 0) { // scrolling up
+      setAutoScroll(false);
+    } else if (isAtBottom()) { // scrolling down and at bottom
+      setAutoScroll(true);
+    }
+  }, [isAtBottom]);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartRef.current = null;
+    if (isAtBottom()) {
+      setAutoScroll(true);
+    }
+  }, [isAtBottom]);
+
+  // Setup scroll listeners
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    // Use passive listeners for better performance
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleScroll, handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   // Handler for keydown events
   const handleKeyDown = (e) => {
@@ -373,7 +450,7 @@ const ChatPage = () => {
 
           {error && <div className="chat-error-banner">Error: {error}</div>} 
           
-          <div className="messages-container" ref={messagesContainerRef}>
+          <div className="messages-container prompt-kit-chat-container" ref={messagesContainerRef}>
             {messages.map((message) => (
               <div 
                 key={message.id} 
@@ -403,26 +480,38 @@ const ChatPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="input-form">
-            <div className="input-container">
+            <div className="input-container prompt-kit-input-container">
               <textarea
                 ref={inputRef}
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder={selectedModel ? `Message ${selectedModel['name to show']}...` : "Select a model first..."}
-                className="message-input"
+                className="message-input prompt-kit-input"
                 rows={inputRows}
                 disabled={isSending || isLoading || !selectedModel || error}
               />
               <button 
                 type="submit" 
-                className="send-button" 
+                className="send-button prompt-kit-send-button" 
                 disabled={isSending || isLoading || !selectedModel || inputValue.trim() === '' || error}
               >
                 <span className="send-icon">➤</span>
               </button>
             </div>
             {error && <div className="input-error">{error}</div>}
+            {!autoScroll && (
+              <button 
+                className="scroll-button" 
+                onClick={() => {
+                  setAutoScroll(true);
+                  scrollToBottom();
+                }}
+                aria-label="Scroll to bottom"
+              >
+                ↓
+              </button>
+            )}
           </form>
           {/* Backend URL debug display removed */}
         </>
