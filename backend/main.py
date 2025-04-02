@@ -27,12 +27,11 @@ app = FastAPI(title="Woffy.ai API", description="Backend API for Woffy.ai chat i
 # Allow requests from your frontend development server
 # Update origin if your frontend runs on a different port
 origins = [
-    "http://localhost",
-    "http://localhost:5173", # Default Vite port
-    "http://127.0.0.1:5173",
-    # Add other origins if needed (e.g., your deployed frontend URL)
-    "https://your-render-frontend-url.onrender.com", # Add your Render frontend URL here
-    # Add other origins if needed (e.g., your deployed frontend URL)
+    "http://localhost:5173",         # Local React dev server
+    "http://localhost:8000",         # Local FastAPI server (if accessing API directly)
+    "http://127.0.0.1:5173",        # Alternative local dev
+    "https://woffy-ai-chat.onrender.com", # Deployed Frontend URL
+    # Add any other origins if needed
 ]
 
 app.add_middleware(
