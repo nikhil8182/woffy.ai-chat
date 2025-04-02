@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/ChatPage.css';
 
@@ -311,6 +311,9 @@ const ChatPage = () => {
     }
   };
 
+  // Calculate the base API URL once
+  const baseApiUrl = useMemo(() => import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000', []);
+
   return (
     <div className="chat-container">
       {isLoading ? (
@@ -421,6 +424,9 @@ const ChatPage = () => {
             </div>
             {error && <div className="input-error">{error}</div>}
           </form>
+          <p style={{ position: 'fixed', bottom: '5px', right: '10px', fontSize: '0.7rem', color: '#aaa', zIndex: 10 }}>
+            API Base: {baseApiUrl}
+          </p>
         </>
       )}
     </div>
