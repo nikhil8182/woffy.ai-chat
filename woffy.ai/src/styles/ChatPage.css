@@ -172,35 +172,7 @@ body, html {
   padding: 0.5rem;
 }
 
-.refresh-models-btn {
-  background-color: var(--input-bg);
-  color: var(--accent-gold);
-  border: 1px solid var(--input-border);
-  border-radius: 0.5rem;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  transition: all 0.2s ease;
-}
-
-.refresh-models-btn:hover {
-  background-color: var(--accent-gold);
-  color: var(--text-dark);
-}
-
-.refresh-models-btn:active {
-  transform: rotate(180deg);
-}
-
-.refresh-models-btn:disabled {
-  background-color: var(--disabled-bg);
-  color: var(--disabled-text);
-  cursor: not-allowed;
-}
+/* Refresh models button removed */
 
 /* Messages container */
 .messages-container {

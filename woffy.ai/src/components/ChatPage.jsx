@@ -421,20 +421,7 @@ const ChatPage = () => {
                     </option>
                   ))}
                 </select>
-                <button 
-                  className="refresh-models-btn" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    fetchModels().then(newModels => {
-                      if (newModels.length > 0 && (!selectedModel || !newModels.find(m => m.api_name === selectedModel.api_name))) {
-                        setSelectedModel(newModels[0]);
-                      }
-                    });
-                  }}
-                  disabled={isSending}
-                >
-                  ↻
-                </button>
+                {/* Refresh models button removed */}
               </div>
               {/* Instruction indicator removed */}
             </div>
