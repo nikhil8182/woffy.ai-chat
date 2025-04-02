@@ -436,11 +436,7 @@ const ChatPage = () => {
                   ↻
                 </button>
               </div>
-              {hasInstruction && (
-                <div className="instruction-indicator" title="Custom instructions are enabled">
-                  <span className="instruction-icon">📝</span>
-                </div>
-              )}
+              {/* Instruction indicator removed */}
             </div>
           ) : (
             !error && (

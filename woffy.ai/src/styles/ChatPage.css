@@ -1013,30 +1013,7 @@ body, html {
   to { opacity: 1; }
 }
 
-/* Instruction indicator styles */
-.instruction-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 0.75rem;
-  background-color: var(--accent-gold-light);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  cursor: help;
-  transition: all 0.2s ease;
-  border: 1px solid var(--accent-gold);
-}
-
-.instruction-indicator:hover {
-  transform: scale(1.1);
-  background-color: rgba(212, 175, 55, 0.25);
-}
-
-.instruction-icon {
-  font-size: 14px;
-  color: var(--accent-gold);
-}
+/* Instruction indicator removed */
 
 /* Scroll to bottom button - Prompt-Kit inspired */
 .scroll-button {
