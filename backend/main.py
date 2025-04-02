@@ -31,6 +31,7 @@ origins = [
     "http://localhost:8000",         # Local FastAPI server (if accessing API directly)
     "http://127.0.0.1:5173",        # Alternative local dev
     "https://woffy-ai-chat.onrender.com", # Deployed Frontend URL
+    "https://chat.woffy.ai",           # Deployed Frontend URL (Custom Domain)
     # Add any other origins if needed
 ]
 
