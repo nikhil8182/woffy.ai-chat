@@ -451,55 +451,85 @@ const ChatPage = () => {
           {error && <div className="chat-error-banner">Error: {error}</div>} 
           
           <div className="messages-container prompt-kit-chat-container" ref={messagesContainerRef}>
-            {messages.map((message) => (
-              <div 
-                key={message.id} 
-                className={`message ${message.isUser ? 'user-message' : 'ai-message'} ${message.isSystem ? 'system-message' : ''}`}
-              >
-                {!message.isSystem && (
-                  <div className="message-avatar">
-                    {message.isUser ? '👤' : '🐶'}
+            <div className="prompt-kit-messages">
+              {messages.map((message) => (
+                <div 
+                  key={message.id} 
+                  className={`prompt-kit-message ${message.isUser ? 'prompt-kit-user-message' : 'prompt-kit-ai-message'} ${message.isSystem ? 'prompt-kit-system-message' : ''}`}
+                >
+                  {!message.isSystem && (
+                    <div className="prompt-kit-avatar">
+                      {message.isUser ? (
+                        <div className="prompt-kit-user-avatar">👤</div>
+                      ) : (
+                        <div className="prompt-kit-assistant-avatar">🐶</div>
+                      )}
+                    </div>
+                  )}
+                  <div className="prompt-kit-content">
+                    {!message.isSystem && (
+                      <div className="prompt-kit-header">
+                        <div className="prompt-kit-name">
+                          {message.isUser ? 'You' : selectedModel?.['name to show'] || 'AI Assistant'}
+                        </div>
+                        <div className="prompt-kit-timestamp">
+                          {new Date(message.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                      </div>
+                    )}
+                    <div className="prompt-kit-bubble">
+                      {message.text}
+                    </div>
                   </div>
-                )}
-                <div className="message-bubble">
-                  {message.text}
                 </div>
-              </div>
-            ))}
-            {isSending && (
-              <div className="message ai-message typing-indicator">
-                <div className="message-avatar">🐶</div>
-                <div className="message-bubble">
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
-                  <span className="typing-dot"></span>
+              ))}
+              {isSending && (
+                <div className="prompt-kit-message prompt-kit-ai-message prompt-kit-typing">
+                  <div className="prompt-kit-avatar">
+                    <div className="prompt-kit-assistant-avatar">🐶</div>
+                  </div>
+                  <div className="prompt-kit-content">
+                    <div className="prompt-kit-header">
+                      <div className="prompt-kit-name">
+                        {selectedModel?.['name to show'] || 'AI Assistant'}
+                      </div>
+                    </div>
+                    <div className="prompt-kit-bubble prompt-kit-typing-bubble">
+                      <span className="typing-dot"></span>
+                      <span className="typing-dot"></span>
+                      <span className="typing-dot"></span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              )}
+            </div>
+            <div className="prompt-kit-scroll-anchor" ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSubmit} className="input-form">
-            <div className="input-container prompt-kit-input-container">
+          <form onSubmit={handleSubmit} className="prompt-kit-form">
+            <div className="prompt-kit-input-container">
               <textarea
                 ref={inputRef}
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder={selectedModel ? `Message ${selectedModel['name to show']}...` : "Select a model first..."}
-                className="message-input prompt-kit-input"
+                className="prompt-kit-textarea"
                 rows={inputRows}
                 disabled={isSending || isLoading || !selectedModel || error}
               />
               <button 
                 type="submit" 
-                className="send-button prompt-kit-send-button" 
+                className="prompt-kit-send-button" 
                 disabled={isSending || isLoading || !selectedModel || inputValue.trim() === '' || error}
+                aria-label="Send message"
               >
-                <span className="send-icon">➤</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="prompt-kit-send-icon">
+                  <path d="M1.724 1.053a.5.5 0 0 0-.714.545l1.403 4.85a.5.5 0 0 0 .397.354l5.69.953c.268.053.268.437 0 .49l-5.69.953a.5.5 0 0 0-.397.354l-1.403 4.85a.5.5 0 0 0 .714.545l13-6.5a.5.5 0 0 0 0-.894l-13-6.5Z" />
+                </svg>
               </button>
             </div>
-            {error && <div className="input-error">{error}</div>}
+            {error && <div className="prompt-kit-error">{error}</div>}
             {!autoScroll && (
               <button 
                 className="scroll-button" 
