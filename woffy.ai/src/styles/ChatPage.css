@@ -38,6 +38,7 @@ body, html {
   width: 100%;
   background-color: var(--primary-bg);
   position: relative;
+  overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 /* Loading state */
@@ -455,6 +456,7 @@ body, html {
     height: 100vh;
     height: -webkit-fill-available; /* Mobile viewport fix */
     padding-bottom: env(safe-area-inset-bottom, 0); /* iOS safe area support */
+    overflow-x: hidden; /* Prevent horizontal overflow */
   }
 
   .messages-container {
@@ -527,6 +529,7 @@ body, html {
 @media (max-width: 480px) {
   .chat-container {
     font-size: 15px; /* Slightly smaller base font */
+    overflow-x: hidden; /* Ensure overflow is hidden on smallest screens too */
   }
   
   .messages-container {
@@ -570,6 +573,7 @@ body, html {
     position: relative;
     display: flex;
     width: 100%;
+    box-sizing: border-box; /* Ensure container itself doesn't cause overflow */
   }
   
   .message-input {
@@ -605,6 +609,7 @@ body, html {
   /* Make model selector more compact */
   .model-selector {
     padding: 0.6rem 0.8rem;
+    overflow-x: hidden; /* Prevent internal overflow */
   }
   
   .model-selector label {
@@ -612,15 +617,18 @@ body, html {
     margin-right: 0.5rem;
   }
   
-  .instruction-indicator {
-    width: 24px;
-    height: 24px;
-    margin-left: 0.5rem;
-  }
-  
-  /* Hide the API URL display on mobile */
-  p[style*="position: fixed"] {
-    display: none;
+  .input-form {
+    padding: 0.8rem 0.8rem 1.2rem;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--primary-bg);
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
+    display: block;
+    overflow-x: hidden; /* Prevent internal overflow */
   }
 }
 
