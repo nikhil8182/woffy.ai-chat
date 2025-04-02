@@ -987,6 +987,94 @@ body, html {
 
 /* Instruction indicator removed */
 
+/* Code Block Styling */
+.code-block-container {
+  position: relative;
+  margin: 1rem 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #1e1e1e;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: rgba(15, 15, 15, 0.8);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.code-language {
+  font-size: 0.8rem;
+  color: var(--accent-gold);
+  font-family: monospace;
+}
+
+.copy-code-btn {
+  background-color: transparent;
+  color: var(--accent-gold);
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.copy-code-btn:hover {
+  background-color: rgba(212, 175, 55, 0.2);
+  transform: scale(1.1);
+}
+
+.copy-code-btn.copied {
+  background-color: var(--accent-gold);
+  color: #1e1e1e;
+}
+
+.code-block-container pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 0;
+  border: none;
+  background-color: #1e1e1e;
+}
+
+.code-block-container code {
+  font-family: monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #f8f8f2;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Mobile responsiveness for code blocks */
+@media (max-width: 768px) {
+  .code-block-container {
+    margin: 0.75rem 0;
+  }
+  
+  .code-block-header {
+    padding: 0.3rem 0.5rem;
+  }
+  
+  .code-block-container pre {
+    padding: 0.75rem;
+  }
+  
+  .code-language {
+    font-size: 0.7rem;
+  }
+}
+
 /* Scroll to bottom button - Prompt-Kit inspired */
 .scroll-button {
   position: absolute;
