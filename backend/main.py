@@ -233,11 +233,16 @@ async def save_models(models: List[Dict[str, Any]]):
         logger.info(f"Models saved successfully to {models_file}")
         
         # Return a simple response structure to avoid JSON parsing issues
-        return {
-            "status": "success", 
-            "message": "Models saved successfully", 
-            "count": len(formatted_models)
-        }
+        # Make sure to use JSONResponse explicitly to ensure proper content type
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success", 
+                "message": "Models saved successfully", 
+                "count": len(formatted_models)
+            },
+            headers={"Content-Type": "application/json"}
+        )
     except Exception as e:
         logger.error(f"Error saving models: {e}")
         # Return a simple error structure
