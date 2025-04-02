@@ -451,66 +451,148 @@ body, html {
 
 /* Responsive styles */
 @media (max-width: 768px) {
+  .chat-container {
+    height: 100vh;
+    height: -webkit-fill-available; /* Mobile viewport fix */
+    padding-bottom: env(safe-area-inset-bottom, 0); /* iOS safe area support */
+  }
+
   .messages-container {
     padding: 1rem;
+    padding-bottom: 1.2rem;
   }
   
   .input-form {
-    padding: 1rem;
+    padding: 0.8rem 1rem;
+    position: sticky;
+    bottom: 0;
+    background-color: var(--primary-bg);
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    border-top: 1px solid rgba(212, 175, 55, 0.1);
   }
   
   .message-bubble {
     max-width: 85%;
+    word-break: break-word;
   }
   
   .model-selector {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
     padding: 0.8rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 11;
+  }
+  
+  .model-select-container {
+    flex: 1;
+    min-width: 0; /* Fix for flexbox overflow */
   }
   
   .model-select {
     width: 100%;
+    font-size: 0.9rem;
+    padding: 0.5rem 2rem 0.5rem 0.6rem; /* Smaller padding for label */
+    background-position: right 0.5rem center;
+  }
+  
+  .refresh-models-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px; /* Ensure minimum width */
   }
   
   .message-avatar {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     font-size: 1rem;
-    margin: 0 0.3rem;
+    margin: 0 0.5rem;
   }
   
   .message {
     max-width: 100%;
+    margin-bottom: 0.9rem;
   }
 }
 
 @media (max-width: 480px) {
+  .chat-container {
+    font-size: 15px; /* Slightly smaller base font */
+  }
+
   .message-bubble {
-    max-width: 90%;
+    max-width: 88%;
     padding: 0.7rem 0.9rem;
     font-size: 0.95rem;
+    border-radius: 16px; /* Rounder bubbles on mobile */
+  }
+  
+  .user-message .message-bubble {
+    border-top-right-radius: 4px; /* Visual cue for user messages */
+  }
+  
+  .ai-message .message-bubble {
+    border-top-left-radius: 4px; /* Visual cue for AI messages */
   }
   
   .system-message .message-bubble {
-    max-width: 90%;
+    max-width: 95%;
     font-size: 0.8rem;
   }
   
-  .input-form {
-    padding: 0.8rem 1rem 1rem;
+  .input-container {
+    margin-top: 0.3rem;
   }
   
   .message-input {
-    padding: 0.8rem 1rem;
-    padding-right: 3.5rem;
-    font-size: 0.95rem;
+    padding: 0.8rem 3rem 0.8rem 1rem; /* Ensure space for the send button */
+    font-size: 15px;
+    border-radius: 18px;
+    min-height: 45px; /* Better touch target */
   }
   
   .send-button {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
+    right: 4px;
+    bottom: 4px;
+    padding: 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
+  }
+  
+  .send-icon {
+    font-size: 0.9rem;
+  }
+  
+  /* Make model selector more compact */
+  .model-selector {
+    padding: 0.6rem 0.8rem;
+  }
+  
+  .model-selector label {
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+  }
+  
+  .instruction-indicator {
+    width: 24px;
+    height: 24px;
+    margin-left: 0.5rem;
+  }
+  
+  /* Improve the API URL display */
+  p[style*="position: fixed"] {
+    bottom: 3px !important;
+    right: 3px !important;
+    font-size: 0.6rem !important;
+    opacity: 0.6;
+    background-color: rgba(18, 18, 18, 0.7);
+    padding: 2px 4px;
+    border-radius: 3px;
   }
 }
 
