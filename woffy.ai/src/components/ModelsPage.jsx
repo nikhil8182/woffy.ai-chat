@@ -8,8 +8,19 @@ const ModelsPage = () => {
   const [error, setError] = useState(null);
   const [saveStatus, setSaveStatus] = useState('');
   
-  // Calculate the base API URL once - use our Express server
-  const baseApiUrl = useMemo(() => import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001', []);
+  // Calculate the base API URL for different environments
+  const baseApiUrl = useMemo(() => {
+    // Check if we're in a production environment (deployed on Render)
+    const isProduction = window.location.hostname !== 'localhost';
+    
+    if (isProduction) {
+      // In production, use the same domain (no need for absolute URL)
+      return '';
+    } else {
+      // In development, try the main FastAPI backend first (port 8000)
+      return import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    }
+  }, []);
 
   // Fetch models from OpenRouter API
   useEffect(() => {

@@ -184,8 +184,24 @@ async def chat_endpoint(request: ChatRequest):
 async def save_models(models: List[Dict[str, Any]]):
     """Save models to model.json file."""
     try:
-        # Define the path to the model.json file in the public directory
-        models_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "woffy.ai", "public", "model.json")
+        # In production (Render), the model.json file is at the root level
+        # In development, it's in the woffy.ai/public directory
+        # Try both locations
+        
+        # Production path (Render deployment)
+        production_path = os.path.join(os.path.dirname(__file__), "model.json")
+        
+        # Development path (local setup)
+        dev_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "woffy.ai", "public", "model.json")
+        
+        # Determine which path to use
+        if os.path.exists(os.path.dirname(dev_path)):
+            models_file = dev_path
+        else:
+            models_file = production_path
+            
+        # Create directory if it doesn't exist (for production environment)
+        os.makedirs(os.path.dirname(models_file), exist_ok=True)
         
         # Ensure the models are in the expected format
         formatted_models = []
@@ -202,7 +218,8 @@ async def save_models(models: List[Dict[str, Any]]):
         with open(models_file, 'w') as f:
             json.dump(formatted_models, f, indent=2)
         
-        return {"status": "success", "message": "Models saved successfully"}
+        logger.info(f"Models saved successfully to {models_file}")
+        return {"status": "success", "message": "Models saved successfully", "path": models_file}
     except Exception as e:
         logger.error(f"Error saving models: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save models: {str(e)}")
