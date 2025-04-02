@@ -31,6 +31,8 @@ origins = [
     "http://localhost:5173", # Default Vite port
     "http://127.0.0.1:5173",
     # Add other origins if needed (e.g., your deployed frontend URL)
+    "https://your-render-frontend-url.onrender.com", # Add your Render frontend URL here
+    # Add other origins if needed (e.g., your deployed frontend URL)
 ]
 
 app.add_middleware(

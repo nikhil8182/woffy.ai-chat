@@ -1,9 +1,12 @@
-# Woffy.ai Project Instructions for AI Agents
+# Woffy.ai Project Instructions for Web Crawlers
 
 # Project Overview
-User-Agent: *
-# Woffy.ai is a React-based chat application with a black and gold themed UI.
-# It features a chat interface with simulated AI responses and allows adding new AI models.
+User-agent: *
+Allow: / 
+
+# Allow all ethical crawlers full access
+# Consider adding a Sitemap line once you have one, e.g.:
+# Sitemap: https://your-domain.com/sitemap.xml
 
 # Key Features
 # - Chat interface (/) with message bubbles for user and AI

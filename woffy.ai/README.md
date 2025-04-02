@@ -6,7 +6,11 @@ A modern AI chat interface with a sleek black and gold design.
 
 ## Overview
 
-Woffy.ai is a React-based chat application that simulates an AI assistant conversation. It features a minimal, elegant UI with a dark theme and gold accents. The application consists of a chat interface and an "Add Model" page that allows users to configure which AI model to use.
+Woffy.ai is a React-based chat application featuring:
+*   A **Vite React frontend** ([woffy.ai](./woffy.ai/)) with a sleek black and gold themed UI.
+*   A **FastAPI Python backend** ([backend](./backend/)) that connects to AI models via OpenRouter.
+
+It allows users to interact with configured AI models, manage model settings, and set global instructions.
 
 ## Features
 
@@ -26,11 +30,9 @@ Woffy.ai is a React-based chat application that simulates an AI assistant conver
 
 ## Technologies Used
 
-- React 19 (with Vite)
-- React Router for navigation
-- CSS3 with custom variables for theming
-- JavaScript (ES6+)
-- Vite middleware for API handling
+*   **Frontend**: React 19, Vite, React Router, CSS3
+*   **Backend**: Python 3.11+, FastAPI, Uvicorn, OpenAI Python SDK (for OpenRouter), python-dotenv
+*   **AI Service**: OpenRouter
 
 ## Getting Started
 
@@ -63,29 +65,67 @@ http://localhost:5173
 ```
 (or the URL shown in your terminal if port 5173 is in use)
 
+### Backend Setup
+
+1.  Navigate to the backend directory:
+    ```bash
+    cd ../backend
+    ```
+
+2.  Create a virtual environment (optional but recommended):
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+
+3.  Install Python dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  Create a `.env` file in the `backend` directory and add your OpenRouter API key:
+    ```env
+    OPENROUTER_API_KEY="your_openrouter_api_key_here"
+    # Optional: Add HTTP_REFERER and X_TITLE if needed by OpenRouter
+    # HTTP_REFERER="https://your-site-url.com"
+    # X_TITLE="Woffy.ai"
+    ```
+
+5.  Run the backend server:
+    ```bash
+    uvicorn main:app --reload --port 8000
+    ```
+    The backend API will be available at `http://localhost:8000`.
+
+### Running Both Frontend and Backend
+
+1.  Start the backend server first (in one terminal).
+2.  Start the frontend development server (in a separate terminal).
+3.  Open `http://localhost:5173` (or the Vite port) in your browser.
+
 ## Project Structure
 
 ```
-woffy.ai/
-├── public/                # Public assets
-├── src/                   # Source files
-│   ├── components/        # React components
-│   │   ├── ChatPage.jsx   # Chat interface component
-│   │   └── NavBar.jsx     # Navigation bar component
-│   ├── styles/            # CSS styles
-│   │   ├── ChatPage.css   # Chat styling
-│   │   ├── NavBar.css     # Navigation bar styling
-│   │   └── AddModelForm.css # Form styling
-│   ├── App.jsx            # Main application component
-│   └── main.jsx           # Entry point
-├── frontend/              # Additional frontend components
-│   └── AddModelForm.jsx   # Form for adding models
-├── api/                   # API handlers
-│   └── add-model.js       # Original API endpoint (not used with Vite config)
-├── model.json             # Stores the current model configuration
-├── robots.txt             # Instructions for AI agents
-├── vite.config.js         # Vite configuration with API middleware
-└── index.html             # HTML entry
+woffy.ai-chat/
+├── backend/                 # Python FastAPI Backend
+│   ├── .env                 # Environment variables (API Key)
+│   ├── .gitignore
+│   ├── main.py              # FastAPI app
+│   ├── requirements.txt     # Python dependencies
+│   └── instructions.json    # Stored common instruction
+│   └── venv/                # Virtual environment (if created)
+├── woffy.ai/                # Vite React Frontend
+│   ├── public/
+│   ├── src/                 # Source files (Components, Styles, etc.)
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── README.md            # This file
+│   ├── vite.config.js
+│   └── robots.txt
+├── .git/
+├── package.json             # (Minimal, potentially for workspace tooling)
+└── package-lock.json
 ```
 
 ## How It Works
@@ -104,25 +144,74 @@ The "Add Model" feature allows you to configure which AI model to use. When you 
 4. The model information is saved to the model.json file
 5. A success notification is displayed and you're redirected to the chat interface
 
-### API Handling
+### Backend API
 
-Instead of requiring a separate backend server, this application uses Vite's middleware capabilities to handle API requests:
+The Python FastAPI backend handles:
+*   Serving chat requests by proxying them to OpenRouter.
+*   Managing a common system instruction for AI models.
+*   CORS (Cross-Origin Resource Sharing) to allow the frontend to make requests.
 
-```javascript
-// From vite.config.js
-function apiHandler() {
-  return {
-    name: 'api-handler',
-    configureServer(server) {
-      server.middlewares.use('/api/add-model', (req, res, next) => {
-        // API handling logic...
-      });
-    }
-  }
-}
-```
+Key Endpoints:
+*   `POST /api/chat`: Sends user messages (prepended with the common instruction) to the specified OpenRouter model and returns the AI's response.
+*   `GET /api/instructions`: Retrieves the current common instruction.
+*   `POST /api/instructions`: Updates the common instruction.
 
-This approach simplifies development by keeping everything in a single project.
+## Deployment to Render
+
+This project can be deployed to Render using two services: a **Static Site** for the frontend and a **Web Service** for the backend.
+
+### 1. Backend Deployment (Web Service)
+
+*   **Repository:** Your GitHub/GitLab repo
+*   **Branch:** `main` (or your deployment branch)
+*   **Root Directory:** `backend`
+*   **Runtime:** `Python 3` (Select a specific version like 3.11)
+*   **Build Command:** `pip install -r requirements.txt`
+*   **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+*   **Environment Variables:**
+    *   `PYTHON_VERSION`: `3.11` (or your chosen Python version)
+    *   `OPENROUTER_API_KEY`: Your key
+    *   `HTTP_REFERER`: (Optional)
+    *   `X_TITLE`: (Optional)
+
+### 2. Frontend Deployment (Static Site)
+
+*   **Repository:** Your GitHub/GitLab repo
+*   **Branch:** `main` (or your deployment branch)
+*   **Root Directory:** `woffy.ai`
+*   **Build Command:** `npm install && npm run build`
+*   **Publish Directory:** `dist`
+
+### 3. CORS Configuration (Important!)
+
+*   After deploying the frontend, **copy its Render URL** (e.g., `https://your-app-name.onrender.com`).
+*   Go back to your **backend service settings** in Render.
+*   Add an **Environment Variable**:
+    *   Key: `FRONTEND_URL` (or similar)
+    *   Value: Your full frontend Render URL.
+*   **Modify `backend/main.py`:** Update the `origins` list in the CORS middleware configuration to include your deployed frontend URL. You can use the environment variable you just set.
+    ```python
+    # backend/main.py
+    # ... (imports)
+    load_dotenv()
+    
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173") # Default for safety
+    
+    origins = [
+        "http://localhost",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        frontend_url, # Add deployed frontend URL
+    ]
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins, # Use the updated list
+        # ... rest of config
+    )
+    # ... rest of the file
+    ```
+*   **Redeploy the backend service** for the CORS change to take effect.
 
 ## Troubleshooting
 
