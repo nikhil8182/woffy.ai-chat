@@ -76,6 +76,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
+    woffy_mode: bool = True  # Default to Woffy Mode ON
 
 class InstructionRequest(BaseModel):
     instruction: str
@@ -129,14 +130,19 @@ async def chat_endpoint(request: ChatRequest):
 
     logger.info(f"Received request for model: {request.model}")
     
-    # Get the common instruction if available
-    instruction = get_instruction()
+    # Get instruction based on woffy_mode setting
+    instruction = ""
+    if request.woffy_mode:
+        # If Woffy Mode is ON, get the instruction from the file
+        instruction = get_instruction()
     
-    # Prepare messages with system instruction if available
+    logger.info(f"Woffy Mode: {'ON' if request.woffy_mode else 'OFF'} - Using instruction: {instruction if instruction else 'Empty'}")
+    
+    # Prepare messages with system instruction
     messages = []
-    if instruction:
-        # Add system instruction as the first message
-        messages.append({"role": "system", "content": instruction})
+    
+    # Always add a system message, but content depends on woffy_mode
+    messages.append({"role": "system", "content": instruction})
     
     # Add user messages
     for msg in request.messages:

@@ -53,6 +53,7 @@ const ChatPage = () => {
   const [inputRows, setInputRows] = useState(1); // Track textarea rows
   const [hasInstruction, setHasInstruction] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true); // Track if auto-scrolling is enabled
+  const [woffyMode, setWoffyMode] = useState(true); // Track Woffy mode (dog-like behavior)
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -287,6 +288,7 @@ const ChatPage = () => {
         body: JSON.stringify({
           model: modelApiName,
           messages: messagesToSend,
+          woffy_mode: woffyMode, // Send Woffy mode preference to the backend
         }),
       });
 
@@ -484,23 +486,39 @@ const ChatPage = () => {
       ) : (
         <>
           {models.length > 0 ? (
-            <div className="model-selector">
-              <label htmlFor="model-select">AI Model:</label>
-              {/* Completely rebuilt model selector without the refresh button */}
-              <select 
-                id="model-select"
-                value={models.findIndex(m => m.api_name === selectedModel?.api_name)}
-                onChange={handleModelChange}
-                className="model-select model-select-standalone"
-                disabled={isSending}
-              >
-                {models.map((model, index) => (
-                  <option key={model.api_name || index} value={index}>
-                    {model['name to show']}
-                  </option>
-                ))}
-              </select>
-              {/* Instruction indicator removed */}
+            <div className="chat-controls">
+              <div className="model-selector">
+                <label htmlFor="model-select">AI Model:</label>
+                {/* Completely rebuilt model selector without the refresh button */}
+                <select 
+                  id="model-select"
+                  value={models.findIndex(m => m.api_name === selectedModel?.api_name)}
+                  onChange={handleModelChange}
+                  className="model-select model-select-standalone"
+                  disabled={isSending}
+                >
+                  {models.map((model, index) => (
+                    <option key={model.api_name || index} value={index}>
+                      {model['name to show']}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* Woffy Mode Toggle moved inside model selector div */}
+                <div className="woffy-toggle-container woffy-toggle-nav">
+                  <label className="woffy-mode-switch">
+                    <input
+                      type="checkbox"
+                      checked={woffyMode}
+                      onChange={() => setWoffyMode(prev => !prev)}
+                    />
+                    <span className="woffy-toggle-slider"></span>
+                    <span className="woffy-mode-label">
+                      {woffyMode ? '🐶 Woffy Mode ON' : '🤖 Normal Mode ON'}
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
           ) : (
             !error && (
@@ -582,6 +600,7 @@ const ChatPage = () => {
             <div className="prompt-kit-scroll-anchor" ref={messagesEndRef} />
           </div>
 
+          
           <form onSubmit={handleSubmit} className="prompt-kit-form">
             <div className="prompt-kit-input-container">
               <textarea

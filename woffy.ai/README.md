@@ -22,6 +22,9 @@ It allows users to interact with configured AI models, manage model settings, an
 - **Model Management**: Add and configure AI models through a user-friendly form
 - **Real-time Validation**: Form validation with helpful error messages
 - **Notifications**: Success and error notifications for better user feedback
+- **Woffy Mode Toggle**: Switch between dog-like AI responses and standard AI communication
+- **Enhanced Message Bubbles**: Modern message display with gradients, shadows, and animations
+- **Improved Input Area**: Refined input field and send button for better usability
 
 ## Screenshots
 
@@ -135,6 +138,14 @@ woffy.ai-chat/
 ### Chat Interface
 
 The chat interface provides a simulation of an AI assistant conversation. Currently, it uses hardcoded responses, but it can be extended to integrate with actual AI models using the configuration from the model.json file.
+
+### Woffy Mode Toggle
+
+The Woffy Mode toggle is positioned in the model selector area at the top-right of the chat interface. It allows users to switch between:
+- **Woffy Mode ON**: AI responses with dog-like personality traits
+- **Woffy Mode OFF**: Standard AI communication style
+
+This feature enhances user engagement by providing two distinct interaction modes without changing the underlying AI model.
 
 ### Add Model
 
