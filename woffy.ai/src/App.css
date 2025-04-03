@@ -85,13 +85,47 @@ body, html {
 
 @media (max-width: 768px) {
   .app-content {
-    height: calc(100vh - 64px); /* maintain consistency with navbar height */
+    height: calc(100vh - 56px); /* Reduced navbar height for mobile */
+    padding: 0.5rem;
+  }
+  
+  /* Chat message bubbles */
+  .message-bubble {
+    max-width: 85%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  
+  /* Input area */
+  .input-area {
+    padding: 0.75rem;
+  }
+  
+  /* Buttons */
+  button {
+    min-height: 44px; /* Better touch target */
+    min-width: 44px;
+    padding: 0.8rem 1rem;
   }
 }
 
 @media (max-width: 480px) {
   .app-content {
-    height: calc(100vh - 64px);
+    height: calc(100vh - 56px);
+  }
+  
+  /* Header adjustments */
+  .header {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+  }
+  
+  /* Avatar sizing */
+  .avatar {
+    width: 32px;
+    height: 32px;
   }
 }
 

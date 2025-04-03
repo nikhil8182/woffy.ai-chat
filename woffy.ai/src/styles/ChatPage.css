@@ -1506,3 +1506,27 @@ input:checked + .woffy-toggle-slider:before {
 .markdown-content table tr:nth-child(even) {
   background-color: rgba(0, 0, 0, 0.1);
 }
+
+@media (max-width: 600px) {
+  /* Optimize mobile view */
+  .chat-container {
+    padding: 0 10px;
+  }
+  .model-selector,
+  .chat-controls {
+    padding: 0.5rem 1rem;
+  }
+  .messages-container {
+    padding: 1rem;
+  }
+  .prompt-kit-content {
+    max-width: 100%;
+  }
+  .chat-loading {
+    gap: 1rem;
+  }
+  .add-model-link {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
