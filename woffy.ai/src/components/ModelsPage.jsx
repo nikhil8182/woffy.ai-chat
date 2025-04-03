@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import '../styles/ModelsPage.css';
 import { supabase } from '../lib/supabase';
+import { FiSearch, FiFilter, FiStar, FiInfo, FiCheck, FiX } from 'react-icons/fi';
 
 const ModelsPage = () => {
   const [openRouterModels, setOpenRouterModels] = useState([]);
@@ -8,6 +9,10 @@ const ModelsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saveStatus, setSaveStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedModelDetails, setSelectedModelDetails] = useState(null);
   
   // Calculate the base API URL for different environments
   const baseApiUrl = useMemo(() => {
@@ -187,6 +192,43 @@ const ModelsPage = () => {
   const isModelSelected = (modelId) => {
     return selectedModels.includes(modelId);
   };
+  
+  // Filter models based on search term and filter type
+  const filteredModels = useMemo(() => {
+    let result = openRouterModels;
+    
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(model => 
+        model.name?.toLowerCase().includes(term) || 
+        model.id?.toLowerCase().includes(term) ||
+        model.description?.toLowerCase().includes(term));
+    }
+    
+    // Apply type filter
+    if (filterType !== 'all') {
+      if (filterType === 'selected') {
+        result = result.filter(model => isModelSelected(model.id));
+      } else if (filterType === 'newest') {
+        // This is a simplified way to show "newest" - in a real app you might have a created_at field
+        result = [...result].sort((a, b) => b.context_length - a.context_length);
+      }
+    }
+    
+    return result;
+  }, [openRouterModels, searchTerm, filterType, selectedModels]);
+  
+  // Open model details modal
+  const openModelDetails = (model) => {
+    setSelectedModelDetails(model);
+    setModalOpen(true);
+  };
+  
+  // Close model details modal
+  const closeModal = () => {
+    setModalOpen(false);
+  };
 
   // Calculate cost per 1000 tokens
   const formatCost = (cost) => {
@@ -199,7 +241,12 @@ const ModelsPage = () => {
     return (
       <div className="models-page">
         <h1>AI Models</h1>
-        <div className="loading-indicator">Loading models...</div>
+        <div className="models-loading">
+          <div className="loading-spinner">
+            <div className="spinner-inner"></div>
+          </div>
+          <p>Loading available AI models...</p>
+        </div>
       </div>
     );
   }
@@ -218,27 +265,93 @@ const ModelsPage = () => {
 
   return (
     <div className="models-page">
-      <h1>AI Models</h1>
-      <p className="models-description">
-        Select models from OpenRouter to add to your chat application. 
-        Changes are saved automatically.
-      </p>
+      <div className="models-header">
+        <h1>AI Models</h1>
+        <p className="models-description">
+          Select models from OpenRouter to add to your chat application.
+          <span className="save-info">Changes are saved automatically.</span>
+        </p>
+        
+        <div className="models-controls">
+          <div className="search-container">
+            <FiSearch className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Search models..." 
+              className="search-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                className="clear-search" 
+                onClick={() => setSearchTerm('')}
+              >
+                <FiX />
+              </button>
+            )}
+          </div>
+          
+          <div className="filter-controls">
+            <div className="filter-label">
+              <FiFilter />
+              <span>Filter:</span>
+            </div>
+            <div className="filter-options">
+              <button 
+                className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterType('all')}
+              >
+                All
+              </button>
+              <button 
+                className={`filter-btn ${filterType === 'selected' ? 'active' : ''}`}
+                onClick={() => setFilterType('selected')}
+              >
+                Selected
+              </button>
+              <button 
+                className={`filter-btn ${filterType === 'newest' ? 'active' : ''}`}
+                onClick={() => setFilterType('newest')}
+              >
+                Newest
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {saveStatus && <div className="save-status">{saveStatus}</div>}
+      
+      {filteredModels.length === 0 && !loading && (
+        <div className="no-results">
+          <FiInfo size={24} />
+          <p>No models found matching your search criteria.</p>
+          <button className="clear-btn" onClick={() => {
+            setSearchTerm('');
+            setFilterType('all');
+          }}>Clear filters</button>
+        </div>
+      )}
 
       <div className="models-grid">
-        {openRouterModels.map(model => (
-          <div key={model.id} className="model-card">
+        {filteredModels.map(model => (
+          <div key={model.id} className={`model-card ${isModelSelected(model.id) ? 'selected' : ''}`}>
+            <div className="model-selection" onClick={() => handleModelSelection(model.id, !isModelSelected(model.id))}>
+              {isModelSelected(model.id) ? (
+                <div className="model-selected">
+                  <FiCheck />
+                </div>
+              ) : (
+                <div className="model-unselected">
+                  <span></span>
+                </div>
+              )}
+            </div>
+            
             <div className="model-header">
               <h3>{model.name || model.id}</h3>
-              <label className="model-checkbox">
-                <input 
-                  type="checkbox"
-                  checked={isModelSelected(model.id)}
-                  onChange={(e) => handleModelSelection(model.id, e.target.checked)}
-                />
-                <span className="checkmark"></span>
-              </label>
+              {isModelSelected(model.id) && <FiStar className="model-starred" />}
             </div>
             
             <div className="model-details">
@@ -246,35 +359,114 @@ const ModelsPage = () => {
               
               <div className="model-specs">
                 <div className="model-spec">
-                  <span className="spec-label">Context:</span>
+                  <span className="spec-label">Context</span>
                   <span className="spec-value">{model.context_length ? `${model.context_length.toLocaleString()} tokens` : 'Unknown'}</span>
                 </div>
                 
                 <div className="model-spec">
-                  <span className="spec-label">Input Cost:</span>
+                  <span className="spec-label">Input</span>
                   <span className="spec-value">{model.pricing ? formatCost(model.pricing.prompt) : 'Unknown'}</span>
                 </div>
                 
                 <div className="model-spec">
-                  <span className="spec-label">Output Cost:</span>
+                  <span className="spec-label">Output</span>
                   <span className="spec-value">{model.pricing ? formatCost(model.pricing.completion) : 'Unknown'}</span>
                 </div>
                 
                 <div className="model-spec">
-                  <span className="spec-label">Modalities:</span>
+                  <span className="spec-label">Type</span>
                   <span className="spec-value">
                     {model.architecture?.input_modalities?.join(', ') || 'Text Only'}
                   </span>
                 </div>
               </div>
+              
+              <button className="view-details-btn" onClick={() => openModelDetails(model)}>
+                View Details
+              </button>
             </div>
           </div>
         ))}
       </div>
 
-      {openRouterModels.length === 0 && (
+      {openRouterModels.length === 0 && !loading && (
         <div className="no-models">
-          No models available from OpenRouter API. Please try again later.
+          <FiInfo size={24} />
+          <p>No models available from OpenRouter API. Please try again later.</p>
+          <button onClick={() => window.location.reload()} className="retry-button">
+            Retry
+          </button>
+        </div>
+      )}
+      
+      {/* Model Details Modal */}
+      {modalOpen && selectedModelDetails && (
+        <div className="model-modal-overlay" onClick={closeModal}>
+          <div className="model-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeModal}>
+              <FiX />
+            </button>
+            
+            <div className="modal-header">
+              <h2>{selectedModelDetails.name || selectedModelDetails.id}</h2>
+              <div className="modal-actions">
+                <label className="modal-checkbox">
+                  <input 
+                    type="checkbox"
+                    checked={isModelSelected(selectedModelDetails.id)}
+                    onChange={(e) => handleModelSelection(selectedModelDetails.id, e.target.checked)}
+                  />
+                  <span>{isModelSelected(selectedModelDetails.id) ? 'Selected' : 'Add to Selection'}</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="modal-body">
+              <div className="modal-section">
+                <h3>Description</h3>
+                <p>{selectedModelDetails.description || "No description available"}</p>
+              </div>
+              
+              <div className="modal-section">
+                <h3>Technical Specifications</h3>
+                <div className="modal-specs">
+                  <div className="modal-spec">
+                    <span className="spec-label">Context Length</span>
+                    <span className="spec-value">{selectedModelDetails.context_length ? `${selectedModelDetails.context_length.toLocaleString()} tokens` : 'Unknown'}</span>
+                  </div>
+                  
+                  <div className="modal-spec">
+                    <span className="spec-label">Input Cost</span>
+                    <span className="spec-value">{selectedModelDetails.pricing ? formatCost(selectedModelDetails.pricing.prompt) : 'Unknown'}</span>
+                  </div>
+                  
+                  <div className="modal-spec">
+                    <span className="spec-label">Output Cost</span>
+                    <span className="spec-value">{selectedModelDetails.pricing ? formatCost(selectedModelDetails.pricing.completion) : 'Unknown'}</span>
+                  </div>
+                  
+                  <div className="modal-spec">
+                    <span className="spec-label">Modalities</span>
+                    <span className="spec-value">
+                      {selectedModelDetails.architecture?.input_modalities?.join(', ') || 'Text Only'}
+                    </span>
+                  </div>
+                  
+                  <div className="modal-spec">
+                    <span className="spec-label">Model ID</span>
+                    <span className="spec-value">{selectedModelDetails.id}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedModelDetails.parameter_count && (
+                <div className="modal-section">
+                  <h3>Model Size</h3>
+                  <p>{(selectedModelDetails.parameter_count / 1000000000).toFixed(1)} billion parameters</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
