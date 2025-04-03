@@ -56,6 +56,8 @@ npm install
 
 3. Start the development server:
 ```bash
+nvm use 18
+npm run devnvm use 18
 npm run dev
 ```
 

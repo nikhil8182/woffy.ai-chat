@@ -28,5 +28,11 @@
     "api_name": "openai/o1-pro",
     "description": "The o1 series of models are trained with reinforcement learning to think before they answer and perform complex reasoning. The o1-pro model uses more compute to think harder and provide consistently better answers.",
     "added_at": "2025-04-02T14:20:15.394Z"
+  },
+  {
+    "name to show": "Quasar Alpha",
+    "api_name": "openrouter/quasar-alpha",
+    "description": "This is a cloaked model provided to the community to gather feedback. It’s a powerful, all-purpose model supporting long-context tasks, including code generation. All prompts and completions for this model are logged by the provider as well as OpenRouter.",
+    "added_at": "2025-04-03T19:56:40.320Z"
   }
 ]
