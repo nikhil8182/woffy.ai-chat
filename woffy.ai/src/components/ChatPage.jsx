@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import '../styles/ChatPage.css';
+import { supabase } from '../lib/supabase';
 
 // Configure marked with custom renderer for code blocks
 const renderer = new marked.Renderer();
@@ -57,22 +58,42 @@ const ChatPage = () => {
   const messagesContainerRef = useRef(null);
   const touchStartRef = useRef(null); // Track touch start position for mobile
 
-  // Function to fetch the latest models
+  // Function to fetch the latest models from Supabase
   const fetchModels = async () => {
     try {
-      // Always fetch the latest model.json from the server
-      const timestamp = new Date().getTime(); // Add timestamp to prevent caching
-      const modelResponse = await fetch(`/model.json?t=${timestamp}`);
-      if (!modelResponse.ok) {
-        throw new Error(`Failed to load models: ${modelResponse.statusText}`);
+      console.log('🔍 ChatPage: Attempting to fetch models from Supabase...');
+      console.log('🔑 ChatPage Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'URL is set' : 'URL is missing');
+      console.log('🔒 ChatPage Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Key is set' : 'Key is missing');
+      
+      // Fetch models from Supabase
+      const { data: modelData, error } = await supabase
+        .from('models')
+        .select('*');
+      
+      console.log('📦 ChatPage Supabase response:', { data: modelData, error });
+        
+      if (error) {
+        throw new Error(`Failed to load models: ${error.message}`);
       }
-      const modelData = await modelResponse.json();
+      
       const modelArray = Array.isArray(modelData) ? modelData : []; // Ensure it's an array
+      if (modelArray.length === 0) {
+        console.warn('⚠️ ChatPage: No models found in Supabase. Adding a sample model for testing');
+        // Add a sample model for testing if none exist
+        modelArray.push({
+          "name to show": "Sample Model (Local Only)",
+          "api_name": "sample/model",
+          "description": "This is a sample model created because no models were found in Supabase.",
+          "added_at": new Date().toISOString()
+        });
+      } else {
+        console.log('✅ ChatPage: Successfully loaded models from Supabase:', modelArray);
+      }
+      
       setModels(modelArray);
-      console.log('Models refreshed successfully:', modelArray);
       return modelArray;
     } catch (error) {
-      console.error('Error fetching models:', error);
+      console.error('❌ ChatPage: Error fetching models:', error);
       throw error;
     }
   };

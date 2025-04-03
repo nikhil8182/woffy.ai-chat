@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import '../styles/ModelsPage.css';
+import { supabase } from '../lib/supabase';
 
 const ModelsPage = () => {
   const [openRouterModels, setOpenRouterModels] = useState([]);
@@ -49,60 +50,73 @@ const ModelsPage = () => {
     fetchOpenRouterModels();
   }, []);
 
-  // Load current models from model.json
+  // Load current models from Supabase
   const loadCurrentModels = async () => {
     try {
-      // Add timestamp to prevent caching
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/model.json?t=${timestamp}`);
+      console.log('🔍 Attempting to fetch models from Supabase...');
+      console.log('🔑 Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'URL is set' : 'URL is missing');
+      console.log('🔒 Using Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Key is set' : 'Key is missing');
       
-      if (!response.ok) {
-        throw new Error(`Failed to load current models: ${response.statusText}`);
+      // Fetch models from Supabase
+      const { data: currentModels, error: supabaseError } = await supabase
+        .from('models')
+        .select('*');
+      
+      console.log('📦 Supabase response:', { data: currentModels, error: supabaseError });
+        
+      if (supabaseError) {
+        throw new Error(`Failed to load current models: ${supabaseError.message}`);
       }
       
-      const currentModels = await response.json();
+      if (!currentModels || currentModels.length === 0) {
+        console.warn('⚠️ No models found in Supabase. Check your models table.');
+      } else {
+        console.log('✅ Successfully loaded models from Supabase:', currentModels);
+      }
       
       // Extract api_names from current models to use for checkbox selection
       const currentModelApiNames = currentModels.map(model => model.api_name);
       setSelectedModels(currentModelApiNames);
     } catch (err) {
-      console.error("Error loading current models:", err);
+      console.error("❌ Error loading current models:", err);
       setError(err.message);
     }
   };
 
-  // Save models directly to model.json file
+  // Save models to Supabase
   const saveModels = async (modelData) => {
     try {
       setSaveStatus('Saving changes...');
       
-      // Always store in localStorage first - this is our reliable storage method
+      // Always store in localStorage first as a backup - this is our reliable storage method
       localStorage.setItem('selected_models', JSON.stringify(modelData));
       
-      // Set success message immediately to improve perceived performance
-      setSaveStatus(`Models selected successfully! (${modelData.length} models)`);
+      // Clear existing models first (transaction-like behavior)
+      const { error: deleteError } = await supabase
+        .from('models')
+        .delete()
+        .neq('api_name', 'placeholder'); // Delete all - dummy condition to avoid empty filter
+        
+      if (deleteError) {
+        throw new Error(`Failed to clear existing models: ${deleteError.message}`);
+      }
       
-      // Fire-and-forget approach for the API call - don't wait for response
-      setTimeout(() => {
-        // Create a silent background API call that won't affect the UI
-        fetch('/api/save-models', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'text/plain'  // Request plain text instead of JSON
-          },
-          body: JSON.stringify(modelData)
-        }).catch(err => {
-          // Just log errors silently, don't affect the UI
-          console.log('Background save attempt:', err);
-        });
-      }, 100);
+      // Insert the new models
+      const { error: insertError } = await supabase
+        .from('models')
+        .insert(modelData);
+        
+      if (insertError) {
+        throw new Error(`Failed to save models: ${insertError.message}`);
+      }
+      
+      // Set success message
+      setSaveStatus(`Models selected successfully! (${modelData.length} models)`);
       
       // Clear status after a delay
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (err) {
-      // This would only happen if localStorage fails
-      console.error('Error saving models locally:', err);
+      console.error('Error saving models:', err);
       setError(`Could not save model selection: ${err.message}`);
       setSaveStatus('');
     }
@@ -111,13 +125,16 @@ const ModelsPage = () => {
   // Handle checkbox changes
   const handleModelSelection = async (modelId, isChecked) => {
     try {
-      // Get the current model.json content
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/model.json?t=${timestamp}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load model.json: ${response.statusText}`);
+      // Get the current models from Supabase
+      const { data: currentModels, error: supabaseError } = await supabase
+        .from('models')
+        .select('*');
+        
+      if (supabaseError) {
+        throw new Error(`Failed to load models: ${supabaseError.message}`);
       }
-      let currentModels = await response.json();
+      
+      let updatedModels = [...currentModels];
       
       if (isChecked) {
         // Add model to selectedModels state
@@ -130,10 +147,10 @@ const ModelsPage = () => {
         }
         
         // Check if this model already exists
-        const modelExists = currentModels.some(model => model.api_name === modelId);
+        const modelExists = updatedModels.some(model => model.api_name === modelId);
         if (!modelExists) {
           // Add the model to the array
-          currentModels.push({
+          updatedModels.push({
             "name to show": modelToAdd.name || modelId,
             "api_name": modelId,
             "description": modelToAdd.description || "",
@@ -145,18 +162,18 @@ const ModelsPage = () => {
         setSelectedModels(prev => prev.filter(id => id !== modelId));
         
         // Remove the model from the array
-        currentModels = currentModels.filter(model => model.api_name !== modelId);
+        updatedModels = updatedModels.filter(model => model.api_name !== modelId);
       }
       
       // Store the updated models in localStorage
-      localStorage.setItem('selected_models', JSON.stringify(currentModels));
+      localStorage.setItem('selected_models', JSON.stringify(updatedModels));
       
       // Show success status immediately for better UX
       setSaveStatus(`Model ${isChecked ? 'added to' : 'removed from'} your selection`);
       setTimeout(() => setSaveStatus(''), 3000);
       
       // Save changes automatically
-      saveModels(currentModels);
+      saveModels(updatedModels);
       
       // Clear any previous errors
       setError(null);
