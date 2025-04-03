@@ -297,19 +297,50 @@ const ChatPage = () => {
         try {
           const errorData = await response.json();
           errorDetail = errorData.detail || JSON.stringify(errorData);
+          
+          // Check for rate limit errors (quota exceeded)
+          const isRateLimited = 
+            (typeof errorDetail === 'string' && (errorDetail.includes('Quota exceeded') || errorDetail.includes('rate limit'))) ||
+            (typeof errorData.error === 'object' && errorData.error?.code === 429) ||
+            response.status === 429;
+          
+          if (isRateLimited) {
+            const friendlyMessage = `This model (${selectedModel?.['name to show'] || 'selected model'}) has reached its rate limit. Please try:
+1. Waiting a minute before sending another message
+2. Selecting a different model from the dropdown
+3. Refreshing the page and trying again`;
+            console.error('Rate limit error:', errorDetail);
+            setError(friendlyMessage);
+            responseToAdd = {
+              id: Date.now(),
+              text: friendlyMessage,
+              isUser: false,
+              isSystem: true
+            };
+          } else {
+            console.error('Backend error:', response.status, errorDetail);
+            setError(`Error ${response.status}: ${errorDetail}`);
+            // Create an error message object to display in chat
+            responseToAdd = {
+              id: Date.now(),
+              text: `Error: ${errorDetail}`,
+              isUser: false,
+              isSystem: true, // Show backend errors as system messages
+            };
+          }
         } catch (parseError) {
           // If parsing error JSON fails, use the status text
           errorDetail = response.statusText;
+          console.error('Backend error:', response.status, errorDetail);
+          setError(`Error ${response.status}: ${errorDetail}`);
+          // Create an error message object to display in chat
+          responseToAdd = {
+            id: Date.now(),
+            text: `Error: ${errorDetail}`,
+            isUser: false,
+            isSystem: true // Show backend errors as system messages
+          };
         }
-        console.error('Backend error:', response.status, errorDetail);
-        setError(`Error ${response.status}: ${errorDetail}`); 
-        // Create an error message object to display in chat
-        responseToAdd = {
-          id: Date.now(),
-          text: `Error: ${errorDetail}`,
-          isUser: false,
-          isSystem: true, // Show backend errors as system messages
-        };
 
       } else {
         // Process successful response
