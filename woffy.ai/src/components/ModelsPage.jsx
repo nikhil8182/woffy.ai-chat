@@ -3,19 +3,16 @@ import '../styles/ModelsPage.css';
 import { supabase } from '../lib/supabase';
 import { FiSearch, FiFilter, FiStar, FiInfo, FiCheck, FiX } from 'react-icons/fi';
 
-// Generate a UUID for model IDs - ensures compatibility across browsers
-function generateUUID() {
-  // Use crypto.randomUUID if available (modern browsers)
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
+// Generate a numeric ID for models - the Supabase table expects an integer ID
+function generateNumericId() {
+  // Generate a large random number (up to 9 digits) to minimize collision risk
+  // Adding timestamp prefix to further reduce collision probability
+  const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0'); // 6 digits
   
-  // Fallback implementation
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  // Combine timestamp and random for uniqueness while keeping the result an integer
+  // Keep it within safe integer range
+  return parseInt(timestamp + random.slice(-3));
 }
 
 const ModelsPage = () => {
@@ -171,7 +168,7 @@ const ModelsPage = () => {
         if (!modelExists) {
           // Add the model to the array
           updatedModels.push({
-            "id": generateUUID(), // Generate a unique UUID for the id field
+            "id": generateNumericId(), // Generate a unique numeric ID for the id field
             "name to show": modelToAdd.name || modelId,
             "api_name": modelId,
             "description": modelToAdd.description || "",
