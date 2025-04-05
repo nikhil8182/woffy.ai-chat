@@ -3,22 +3,62 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ChatPage from './components/ChatPage';
 import NavBar from './components/NavBar';
 import SupabaseTest from './components/SupabaseTest';
+import LoginPage from './components/LoginPage';
+import SignupPage from './components/SignupPage';
+import ForgotPasswordPage from './components/ForgotPasswordPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="app">
-        <NavBar />
-        <main className="app-content">
+    <AuthProvider>
+      <Router>
+        <div className="app">
           <Routes>
-            <Route path="/" element={<ChatPage />} />
-            <Route path="/supabase-test" element={<SupabaseTest />} />
-            {/* <Route path="*" element={<ChatPage />} /> */}
+            {/* Auth routes (unprotected) */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            
+            {/* Protected routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <div className="authenticated-layout">
+                  <NavBar />
+                  <main className="app-content">
+                    <ChatPage />
+                  </main>
+                </div>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/supabase-test" element={
+              <ProtectedRoute>
+                <div className="authenticated-layout">
+                  <NavBar />
+                  <main className="app-content">
+                    <SupabaseTest />
+                  </main>
+                </div>
+              </ProtectedRoute>
+            } />
+            
+            {/* Catch-all route, redirect to login if not authenticated */}
+            <Route path="*" element={
+              <ProtectedRoute>
+                <div className="authenticated-layout">
+                  <NavBar />
+                  <main className="app-content">
+                    <ChatPage />
+                  </main>
+                </div>
+              </ProtectedRoute>
+            } />
           </Routes>
-        </main>
-      </div>
-    </Router>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
