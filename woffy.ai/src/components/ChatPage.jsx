@@ -46,10 +46,7 @@ const ChatPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null); // Add error state
   const [inputRows, setInputRows] = useState(1); // Track textarea rows
-  const [woffyInstruction, setWoffyInstruction] = useState('');  // Store Woffy mode instruction
-  const [normalInstruction, setNormalInstruction] = useState('');  // Store Normal mode instruction
   const [autoScroll, setAutoScroll] = useState(true); // Track if auto-scrolling is enabled
-  const [woffyMode, setWoffyMode] = useState(true); // Track Woffy mode (dog-like behavior)
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -69,27 +66,13 @@ const ChatPage = () => {
       setIsLoading(true);
       
       try {
-        // Add an initial AI greeting based on initial Woffy mode state
-        const greeting = woffyMode
-          ? `Hello! I'm Woffy, your friendly AI pet assistant. How can I help you today? *wags tail*`
-          : `Hello! I'm Woffy.ai, your advanced AI assistant. How can I help you today?`;
+        // Add an initial AI greeting
+        const greeting = `Hello! I'm Woffy, your friendly AI assistant. How can I help you today?`;
         setMessages([{
           id: Date.now(),
           text: greeting,
           isUser: false,
         }]);
-        
-        // Fetch both instruction modes
-        const instructionResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/instructions`
-        );
-        
-        if (instructionResponse.ok) {
-          const instructionData = await instructionResponse.json();
-          // Store both types of instructions
-          setWoffyInstruction(instructionData.woffy_mode || '');
-          setNormalInstruction(instructionData.normal_mode || '');
-        }
         
         setIsLoading(false);
         
@@ -169,8 +152,7 @@ const ChatPage = () => {
         },
         body: JSON.stringify({
           model: modelApiName,
-          messages: messagesToSend,
-          woffy_mode: woffyMode, // Send Woffy mode preference to the backend
+          messages: messagesToSend
         }),
       });
 
@@ -363,39 +345,7 @@ const ChatPage = () => {
       ) : (
         <>
           <div className="chat-controls">
-            <div className="woffy-toggle-container woffy-toggle-nav">
-              <label className="woffy-mode-switch">
-                <input
-                  type="checkbox"
-                  checked={woffyMode}
-                  onChange={() => {
-                    const newMode = !woffyMode;
-                    setWoffyMode(newMode);
-                    
-                    // Add a system message showing the mode change
-                    const systemMessage = {
-                      id: Date.now(),
-                      text: newMode 
-                        ? "🐶 Woffy Mode activated! I'll be a friendly dog assistant now. Woof!" 
-                        : "🤖 Normal Mode activated. I'll be a professional assistant now.",
-                      isUser: false,
-                      isSystem: true,
-                      timestamp: new Date().toLocaleTimeString()
-                    };
-                    
-                    setMessages(prevMessages => [...prevMessages, systemMessage]);
-                  }}
-                />
-                <span className="woffy-toggle-slider"></span>
-                <span className="woffy-mode-label">
-                  {woffyMode ? '🐶 Woffy Mode ON' : '🤖 Normal Mode ON'}
-                </span>
-              </label>
-              
-              <Link to="/instructions" className="instruction-badge" title="Configure Woffy and Normal mode instructions">
-                📝
-              </Link>
-            </div>
+            {/* Woffy Mode toggle removed */}
           </div>
           
           <div className="messages-container" ref={messagesContainerRef}>

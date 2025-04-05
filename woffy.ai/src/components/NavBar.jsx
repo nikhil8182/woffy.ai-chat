@@ -19,12 +19,6 @@ const NavBar = () => {
           >
             Chat
           </Link>
-          <Link 
-            to="/instructions" 
-            className={`nav-item ${location.pathname === '/instructions' ? 'active' : ''}`}
-          >
-            Instructions
-          </Link>
         </div>
       </div>
     </nav>
