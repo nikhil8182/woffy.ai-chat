@@ -17,7 +17,14 @@ try {
         select: () => Promise.resolve({ data: [], error: null }),
         insert: () => Promise.resolve({ data: null, error: null }),
         delete: () => ({ neq: () => Promise.resolve({ error: null }) })
-      })
+      }),
+      auth: {
+        signUp: () => Promise.resolve({ data: null, error: { message: 'Missing Supabase credentials' } }),
+        signIn: () => Promise.resolve({ data: null, error: { message: 'Missing Supabase credentials' } }),
+        signOut: () => Promise.resolve({ error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+      }
     };
   } else {
     supabaseClient = createClient(supabaseUrl, supabaseKey);
@@ -30,8 +37,42 @@ try {
       select: () => Promise.resolve({ data: [], error: null }),
       insert: () => Promise.resolve({ data: null, error: null }),
       delete: () => ({ neq: () => Promise.resolve({ error: null }) })
-    })
+    }),
+    auth: {
+      signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase initialization failed' } }),
+      signIn: () => Promise.resolve({ data: null, error: { message: 'Supabase initialization failed' } }),
+      signOut: () => Promise.resolve({ error: null }),
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+    }
   };
 }
+
+// Authentication helper functions
+export const signUp = async (email, password) => {
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+  return { data, error };
+};
+
+export const signIn = async (email, password) => {
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+  return { data, error };
+};
+
+export const signOut = async () => {
+  const { error } = await supabaseClient.auth.signOut();
+  return { error };
+};
+
+export const getCurrentSession = async () => {
+  const { data, error } = await supabaseClient.auth.getSession();
+  return { session: data.session, error };
+};
 
 export const supabase = supabaseClient;

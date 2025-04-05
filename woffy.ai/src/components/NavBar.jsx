@@ -1,9 +1,17 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/NavBar.css';
 
 const NavBar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
   
   return (
     <nav className="navbar">
@@ -19,6 +27,17 @@ const NavBar = () => {
           >
             Chat
           </Link>
+        </div>
+        
+        <div className="navbar-auth">
+          {user && (
+            <>
+              <span className="user-email">{user.email}</span>
+              <button onClick={handleLogout} className="logout-button">
+                Logout
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>

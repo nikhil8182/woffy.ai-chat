@@ -77,6 +77,38 @@
   border-radius: 2px;
 }
 
+.navbar-auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-email {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  opacity: 0.8;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-button {
+  background-color: transparent;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background-color: var(--accent-gold);
+  color: var(--text-dark);
+}
+
 @media (max-width: 768px) {
   .navbar-container {
     padding: 0 1rem;
@@ -93,5 +125,15 @@
   
   .navbar-links {
     gap: 0.75rem;
+  }
+  
+  .user-email {
+    max-width: 100px;
+    font-size: 0.75rem;
+  }
+  
+  .logout-button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
   }
 } 
