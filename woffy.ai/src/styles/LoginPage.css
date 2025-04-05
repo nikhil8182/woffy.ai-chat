@@ -198,7 +198,15 @@
   color: #aaa;
 }
 
-.google-button {
+.social-logins {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.google-button,
+.github-button {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -214,7 +222,14 @@
   color: #ffd700;
 }
 
-.google-button svg {
+.github-button:hover {
+  background: #2a2a2a;
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.google-button svg,
+.github-button svg {
   flex-shrink: 0;
 }
 
