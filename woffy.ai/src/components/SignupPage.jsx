@@ -11,50 +11,120 @@ function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    terms: ''
+  });
   const navigate = useNavigate();
   
   // Check for OAuth redirect result on component mount
   useEffect(() => {
     const handleOAuthRedirect = async () => {
       const { data, error } = await supabase.auth.getSession();
-      if (data?.session && !error) {
+      console.log('Auth session check:', { data, error });
+      
+      // Get URL parameters to check for auth errors
+      const urlParams = new URLSearchParams(window.location.search);
+      const errorParam = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+      
+      if (errorParam) {
+        console.error('Auth redirect error:', errorParam, errorDescription);
+        setError(`Authentication error: ${errorDescription || errorParam}`);
+      } else if (data?.session && !error) {
+        console.log('User authenticated, redirecting to home');
         navigate('/');
       }
     };
     
     handleOAuthRedirect();
   }, [navigate]);
+  
+  // Field validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email) ? '' : 'Please enter a valid email address';
+  };
+  
+  const validateUsername = (username) => {
+    if (!username) return 'Username is required';
+    if (username.length < 3) return 'Username must be at least 3 characters';
+    if (username.length > 20) return 'Username must be less than 20 characters';
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only contain letters, numbers, and underscores';
+    return '';
+  };
+  
+  const validatePassword = (password) => {
+    if (!password) return 'Password is required';
+    if (password.length < 6) return 'Password must be at least 6 characters';
+    return '';
+  };
+  
+  const validateConfirmPassword = (password, confirmPassword) => {
+    if (password !== confirmPassword) return "Passwords don't match";
+    return '';
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     
-    // Validate password match
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      setLoading(false);
+    // Validate all fields
+    const newValidationErrors = {
+      username: validateUsername(username),
+      email: validateEmail(email),
+      password: validatePassword(password),
+      confirmPassword: validateConfirmPassword(password, confirmPassword),
+      terms: !agreeToTerms ? 'You must agree to the Terms of Service' : ''
+    };
+    
+    setValidationErrors(newValidationErrors);
+    
+    // Check if there are any validation errors
+    const hasErrors = Object.values(newValidationErrors).some(error => error !== '');
+    if (hasErrors) {
       return;
     }
     
-    // Validate password strength
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
 
     try {
-      // Create the user
+      console.log('Creating new user account:', { email, username });
+      
+      // Create the user with metadata
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username,
+            display_name: username,  // Set display_name to username
+            full_name: username,
+            avatar_url: '',
+            created_at: new Date().toISOString(),
           },
         },
       });
+      
+      // If the signup is successful, also update the user's metadata in Supabase
+      if (data?.user && !error) {
+        try {
+          // Store additional user info in a profiles table if needed
+          console.log('User created successfully:', data.user);
+          
+          // You can add code here to update a profiles table in your Supabase database
+          // This would require a database table and RLS policies to be set up
+        } catch (profileError) {
+          console.error('Error updating user profile:', profileError);
+          // Continue anyway since the user was created successfully
+        }
+      }
+      
+      console.log('Signup response:', { data, error });
 
       if (error) throw error;
       
@@ -139,10 +209,24 @@ function SignupPage() {
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (validationErrors.username) {
+                    setValidationErrors({
+                      ...validationErrors,
+                      username: validateUsername(e.target.value)
+                    });
+                  }
+                }}
+                onBlur={() => setValidationErrors({
+                  ...validationErrors,
+                  username: validateUsername(username)
+                })}
                 placeholder="Choose a username"
                 required
+                className={validationErrors.username ? 'input-error' : ''}
               />
+              {validationErrors.username && <div className="field-error">{validationErrors.username}</div>}
             </div>
           
             <div className="form-group">
@@ -151,10 +235,24 @@ function SignupPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (validationErrors.email) {
+                    setValidationErrors({
+                      ...validationErrors,
+                      email: validateEmail(e.target.value)
+                    });
+                  }
+                }}
+                onBlur={() => setValidationErrors({
+                  ...validationErrors,
+                  email: validateEmail(email)
+                })}
                 placeholder="Enter your email"
                 required
+                className={validationErrors.email ? 'input-error' : ''}
               />
+              {validationErrors.email && <div className="field-error">{validationErrors.email}</div>}
             </div>
             
             <div className="form-group">
@@ -163,10 +261,25 @@ function SignupPage() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (validationErrors.password) {
+                    setValidationErrors({
+                      ...validationErrors,
+                      password: validatePassword(e.target.value),
+                      confirmPassword: validateConfirmPassword(e.target.value, confirmPassword)
+                    });
+                  }
+                }}
+                onBlur={() => setValidationErrors({
+                  ...validationErrors,
+                  password: validatePassword(password)
+                })}
                 placeholder="Create a password"
                 required
+                className={validationErrors.password ? 'input-error' : ''}
               />
+              {validationErrors.password && <div className="field-error">{validationErrors.password}</div>}
             </div>
             
             <div className="form-group">
@@ -175,10 +288,51 @@ function SignupPage() {
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (validationErrors.confirmPassword) {
+                    setValidationErrors({
+                      ...validationErrors,
+                      confirmPassword: validateConfirmPassword(password, e.target.value)
+                    });
+                  }
+                }}
+                onBlur={() => setValidationErrors({
+                  ...validationErrors,
+                  confirmPassword: validateConfirmPassword(password, confirmPassword)
+                })}
                 placeholder="Confirm your password"
                 required
+                className={validationErrors.confirmPassword ? 'input-error' : ''}
               />
+              {validationErrors.confirmPassword && <div className="field-error">{validationErrors.confirmPassword}</div>}
+            </div>
+            
+            <div className="form-group checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={agreeToTerms}
+                  onChange={(e) => {
+                    setAgreeToTerms(e.target.checked);
+                    if (e.target.checked) {
+                      setValidationErrors({
+                        ...validationErrors,
+                        terms: ''
+                      });
+                    }
+                  }}
+                  className={validationErrors.terms ? 'input-error' : ''}
+                />
+                <span>I agree to the <Link to="#" onClick={(e) => {
+                  e.preventDefault();
+                  alert('Terms of Service will be displayed here');
+                }}>Terms of Service</Link> and <Link to="#" onClick={(e) => {
+                  e.preventDefault();
+                  alert('Privacy Policy will be displayed here');
+                }}>Privacy Policy</Link></span>
+              </label>
+              {validationErrors.terms && <div className="field-error">{validationErrors.terms}</div>}
             </div>
             
             <button 
