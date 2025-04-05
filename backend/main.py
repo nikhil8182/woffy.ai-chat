@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from dotenv import load_dotenv
-from openai import AsyncOpenAI, APIError
+from openai import OpenAI, APIError
 import logging
 
 # Configure logging
@@ -35,28 +35,18 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# --- OpenRouter Configuration --- 
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or None
-http_referer = os.getenv("HTTP_REFERER") # Optional
-x_title = os.getenv("X_TITLE") # Optional
+# --- OpenAI Configuration --- 
+openai_api_key = os.getenv("OPENAI_API_KEY") or None
 
-if not openrouter_api_key:
-    logger.error("FATAL: OPENROUTER_API_KEY is not set in the .env file.")
+if not openai_api_key:
+    logger.error("FATAL: OPENAI_API_KEY is not set in the .env file.")
     # In a real app, you might want to prevent startup 
     # or return a specific error state here.
     # For simplicity, we'll let it proceed but API calls will fail.
 
-default_headers = {}
-if http_referer: 
-    default_headers['HTTP-Referer'] = http_referer
-if x_title:
-    default_headers['X-Title'] = x_title
-
-# Initialize OpenAI client (use AsyncOpenAI for async FastAPI)
-client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=openrouter_api_key,
-    default_headers=default_headers
+# Initialize OpenAI client
+client = OpenAI(
+    api_key=openai_api_key
 )
 
 # --- Request/Response Models --- 
@@ -72,24 +62,27 @@ class ChatRequest(BaseModel):
 # --- API Endpoints --- 
 @app.post("/api/chat", response_model=ChatMessage)
 async def chat_endpoint(request: ChatRequest):
-    """Receives chat messages and proxies the request to OpenRouter."""
-    if not openrouter_api_key:
+    """Receives chat messages and proxies the request to OpenAI."""
+    if not openai_api_key:
          raise HTTPException(status_code=500, detail="Server configuration error: API key not set.")
 
     try:
-        logger.info(f"Processing chat request with model: {request.model}")
+        # Always use GPT-4o regardless of model requested
+        model_to_use = "gpt-4o-search-preview"
+        logger.info(f"Processing chat request with model: {model_to_use}")
         
         # Convert the messages to the format required by the API
         messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
         # Log the number of messages being sent
-        logger.info(f"Sending {len(messages)} messages to OpenRouter")
+        logger.info(f"Sending {len(messages)} messages to OpenAI")
         
-        # Call the OpenRouter API (through OpenAI client)
-        completion = await client.chat.completions.create(
-            model=request.model,
+        # Call the OpenAI API
+        completion = client.chat.completions.create(
+            model=model_to_use,
             messages=messages,
-            stream=False
+            response_format={"type": "text"},
+            store=False
         )
         
         # Add safety checks to avoid NoneType errors
@@ -108,13 +101,13 @@ async def chat_endpoint(request: ChatRequest):
             raise HTTPException(status_code=500, detail="Invalid message format from AI service")
         
         response_message = choice.message
-        logger.info("Successfully received response from OpenRouter.")
+        logger.info("Successfully received response from OpenAI.")
         
         # Return the response message in the expected format
         return ChatMessage(role=response_message.role, content=response_message.content)
     
     except APIError as e:
-        logger.error(f"OpenRouter API Error: {e.status_code} - {e.message}")
+        logger.error(f"OpenAI API Error: {e.status_code} - {e.message}")
         raise HTTPException(status_code=e.status_code or 500, detail=f"AI Service Error: {e.message}")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}", exc_info=True)
