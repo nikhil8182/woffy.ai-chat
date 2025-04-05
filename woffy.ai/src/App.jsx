@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ChatPage from './components/ChatPage';
 import InstructionConfig from './components/InstructionConfig';
-import ModelsPage from './components/ModelsPage';
 import NavBar from './components/NavBar';
 import SupabaseTest from './components/SupabaseTest';
 import './App.css';
@@ -16,7 +15,6 @@ function App() {
           <Routes>
             <Route path="/" element={<ChatPage />} />
             <Route path="/instructions" element={<InstructionConfig />} />
-            <Route path="/models" element={<ModelsPage />} />
             <Route path="/supabase-test" element={<SupabaseTest />} />
             {/* <Route path="*" element={<ChatPage />} /> */}
           </Routes>

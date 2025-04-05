@@ -80,29 +80,48 @@ class ChatRequest(BaseModel):
 
 class InstructionRequest(BaseModel):
     instruction: str
+    mode: str = 'woffy_mode'  # Default to woffy_mode if not specified
 
 # --- Helper Functions ---
-def get_instruction():
-    """Load the common instruction from the JSON file."""
+def get_instruction(mode='woffy_mode'):
+    """Load the instruction based on mode from the JSON file.
+    mode: 'woffy_mode' or 'normal_mode'"""
     try:
         if os.path.exists(INSTRUCTIONS_FILE):
             with open(INSTRUCTIONS_FILE, 'r') as f:
                 data = json.load(f)
-                return data.get('instruction', '')
+                # Return the appropriate instruction based on mode
+                # Default to empty string if the mode is not found
+                return data.get(mode, '')
         else:
-            # Create empty instructions file if it doesn't exist
+            # Create default instructions file if it doesn't exist
             with open(INSTRUCTIONS_FILE, 'w') as f:
-                json.dump({'instruction': ''}, f)
-            return ''
+                default_instructions = {
+                    'woffy_mode': 'Your name is Woffy. Behave like a friendly dog assistant.',
+                    'normal_mode': 'You are an advanced AI assistant.'
+                }
+                json.dump(default_instructions, f, indent=2)
+            return default_instructions.get(mode, '')
     except Exception as e:
         logger.error(f"Error loading instruction: {e}")
         return ''
 
-def save_instruction(instruction):
-    """Save the common instruction to the JSON file."""
+def save_instruction(instruction, mode='woffy_mode'):
+    """Save the instruction to the JSON file based on mode.
+    mode: 'woffy_mode' or 'normal_mode'"""
     try:
+        # Load existing instructions
+        current_instructions = {}
+        if os.path.exists(INSTRUCTIONS_FILE):
+            with open(INSTRUCTIONS_FILE, 'r') as f:
+                current_instructions = json.load(f)
+        
+        # Update the specific mode instruction
+        current_instructions[mode] = instruction
+        
+        # Save back to file
         with open(INSTRUCTIONS_FILE, 'w') as f:
-            json.dump({'instruction': instruction}, f, indent=2)
+            json.dump(current_instructions, f, indent=2)
         return True
     except Exception as e:
         logger.error(f"Error saving instruction: {e}")
@@ -110,15 +129,18 @@ def save_instruction(instruction):
 
 # --- API Endpoints --- 
 @app.get("/api/instructions")
-async def get_common_instruction():
-    """Get the common instruction for all models."""
-    return {"instruction": get_instruction()}
+async def get_instructions():
+    """Get instructions for both modes."""
+    return {
+        "woffy_mode": get_instruction('woffy_mode'),
+        "normal_mode": get_instruction('normal_mode')
+    }
 
 @app.post("/api/instructions")
-async def update_common_instruction(request: InstructionRequest):
-    """Save the common instruction for all models."""
-    if save_instruction(request.instruction):
-        return {"status": "success", "message": "Common instruction saved for all models"}
+async def update_instruction(request: InstructionRequest):
+    """Save the instruction for the specified mode."""
+    if save_instruction(request.instruction, request.mode):
+        return {"status": "success", "message": f"Instruction saved for {request.mode}"}
     else:
         raise HTTPException(status_code=500, detail="Failed to save instruction")
 
@@ -128,15 +150,15 @@ async def chat_endpoint(request: ChatRequest):
     if not openrouter_api_key:
          raise HTTPException(status_code=500, detail="Server configuration error: API key not set.")
 
-    logger.info(f"Received request for model: {request.model}")
+    # Hardcode model to gpt-4o-search-preview (hidden from user)
+    hardcoded_model = "openai/gpt-4o-search-preview"
+    logger.info(f"Received chat request for woffy.ai")
     
     # Get instruction based on woffy_mode setting
-    instruction = ""
-    if request.woffy_mode:
-        # If Woffy Mode is ON, get the instruction from the file
-        instruction = get_instruction()
+    mode = 'woffy_mode' if request.woffy_mode else 'normal_mode'
+    instruction = get_instruction(mode)
     
-    logger.info(f"Woffy Mode: {'ON' if request.woffy_mode else 'OFF'} - Using instruction: {instruction if instruction else 'Empty'}")
+    logger.info(f"Mode: {mode} - Using instruction: {instruction if instruction else 'Empty'}")
     
     # Prepare messages with system instruction
     messages = []
@@ -150,10 +172,10 @@ async def chat_endpoint(request: ChatRequest):
     
     try:
         # Log the actual messages being sent for debugging
-        logger.info(f"Sending the following messages to model {request.model}: {messages}")
+        logger.info(f"Processing woffy.ai chat request with {len(messages)} messages")
         
         completion = await client.chat.completions.create(
-            model=request.model,
+            model="openai/gpt-4o-search-preview",  # Hardcoded model instead of request.model
             messages=messages,
             max_tokens=1024  # Limiting max tokens to prevent credit issues
         )

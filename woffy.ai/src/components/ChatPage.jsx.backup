@@ -39,6 +39,8 @@ const formatMessagesForApi = (msgs) => {
     }));
 };
 
+// Copy code function removed
+
 const ChatPage = () => {
   const [messages, setMessages] = useState([]); // Start with empty messages array
   const [inputValue, setInputValue] = useState('');
@@ -46,8 +48,7 @@ const ChatPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null); // Add error state
   const [inputRows, setInputRows] = useState(1); // Track textarea rows
-  const [woffyInstruction, setWoffyInstruction] = useState('');  // Store Woffy mode instruction
-  const [normalInstruction, setNormalInstruction] = useState('');  // Store Normal mode instruction
+  const [hasInstruction, setHasInstruction] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true); // Track if auto-scrolling is enabled
   const [woffyMode, setWoffyMode] = useState(true); // Track Woffy mode (dog-like behavior)
   const messagesEndRef = useRef(null);
@@ -55,79 +56,152 @@ const ChatPage = () => {
   const messagesContainerRef = useRef(null);
   const touchStartRef = useRef(null); // Track touch start position for mobile
 
-  // Hardcoded model information (hidden from user)
+  // Hardcoded model information
   const hardcodedModel = {
-    'name to show': 'Woffy',
-    'api_name': 'openai/gpt-4o-search-preview', // Hidden from UI
-    'description': 'Your friendly AI dog assistant',
+    'name to show': 'GPT-4o Search Preview',
+    'api_name': 'openai/gpt-4o-search-preview',
+    'description': 'GPT-4o with search capabilities',
   };
 
-  // Initialize chat and fetch instructions on component mount
+  // Fetch available models and instructions on component mount
   useEffect(() => {
     const loadData = async () => {
       setError(null); // Clear previous errors
       setIsLoading(true);
       
+      // First set a default message while loading
+      setMessages([{
+        id: Date.now(),
+        text: 'Loading AI models...',
+        isUser: false,
+        isSystem: true
+      }]);
+      
       try {
-        // Add an initial AI greeting based on initial Woffy mode state
-        const greeting = woffyMode
-          ? `Hello! I'm Woffy, your friendly AI pet assistant. How can I help you today? *wags tail*`
-          : `Hello! I'm Woffy.ai, your advanced AI assistant. How can I help you today?`;
-        setMessages([{
-          id: Date.now(),
-          text: greeting,
-          isUser: false,
-        }]);
-        
-        // Fetch both instruction modes
-        const instructionResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/instructions`
-        );
-        
-        if (instructionResponse.ok) {
-          const instructionData = await instructionResponse.json();
-          // Store both types of instructions
-          setWoffyInstruction(instructionData.woffy_mode || '');
-          setNormalInstruction(instructionData.normal_mode || '');
+        // Fetch models
+        let modelArray = [];
+        try {
+          modelArray = await fetchModels();
+          console.log('Models loaded successfully:', modelArray);
+        } catch (modelErr) {
+          console.error('Error loading models:', modelErr);
+          throw new Error(`Could not load models: ${modelErr.message}`);
         }
         
+        // Fetch instruction - this is non-critical
+        try {
+          const instructionResponse = await fetch('http://localhost:8000/api/instructions');
+          if (instructionResponse.ok) {
+            const instructionData = await instructionResponse.json();
+            const hasInst = instructionData && instructionData.instruction && instructionData.instruction.trim() !== '';
+            setHasInstruction(hasInst);
+            console.log('Instruction loaded successfully:', instructionData);
+          }
+        } catch (instructionErr) {
+          console.warn('Could not load instruction:', instructionErr);
+          // Don't throw error for instruction - non-critical
+        }
+        
+        // Clear loading state as we have the models now
         setIsLoading(false);
         
+        if (modelArray.length > 0) {
+          const firstModel = modelArray[0];
+          setSelectedModel(firstModel);
+          setMessages([
+            {
+              id: Date.now(), // Use timestamp for potentially better unique ID
+              text: `Using ${firstModel['name to show']}. How can I help?`,
+              isUser: false,
+              isSystem: true
+            }
+          ]);
+        } else {
+           setMessages([
+            {
+              id: Date.now(),
+              text: 'No AI models found. Please add a model via the main menu.',
+              isUser: false,
+              isSystem: true
+            }
+          ]);
+        }
       } catch (err) {
-        console.error('Error initializing chat:', err);
-        setError(`Error initializing chat: ${err.message}`);
+        console.error('Error loading models:', err);
         setIsLoading(false);
+        setError(err.message);
+        setMessages([
+          {
+            id: Date.now(),
+            text: `Error loading models: ${err.message}. Please check console or add a model.`, 
+            isUser: false,
+            isSystem: true
+          }
+        ]);
       }
     };
     
-    loadData();
+    loadData(); // Call the loadData function instead of loadModels
 
-    // Register window resize listener for mobile view
-    window.addEventListener('resize', handleWindowResize);
-    return () => {
-      window.removeEventListener('resize', handleWindowResize);
-    };
+    // Focus input after a short delay
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 500);
   }, []);
 
-  // Window resize handler for responsive adjustments
-  const handleWindowResize = useCallback(() => {
-    // Any window resize logic here (for responsive UI)
-  }, []);
-
-  // Function to scroll to bottom of chat  
-  const scrollToBottom = useCallback(() => {
-    if (autoScroll && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  const handleModelChange = (e) => {
+    const modelIndex = parseInt(e.target.value, 10);
+    if (isNaN(modelIndex) || modelIndex < 0 || modelIndex >= models.length) {
+      console.error('Invalid model index:', e.target.value);
+      return;
     }
-  }, [autoScroll]);
+    
+    const model = models[modelIndex];
+    if (!model) {
+      console.error('Model not found at index:', modelIndex);
+      return;
+    }
+    
+    console.log('Selected model:', model);
+    setSelectedModel(model);
+    setError(null); // Clear error on model change
+    
+    // We now use a common instruction for all models
+    
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        text: `Switched to ${model['name to show']}${hasInstruction ? ' with custom instructions' : ''}. How can I help you?`,
+        isUser: false,
+        isSystem: true
+      }
+    ]);
 
-  // Handler for textarea input changes
+    inputRef.current?.focus();
+  };
+
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
     
-    // Auto-resize textarea
-    const currentRows = e.target.value.split('\n').length;
-    const maxRows = 5; // Max rows before scrolling
+    // Auto-resize textarea based on content
+    const textareaLineHeight = 24; // Approximate line height in pixels
+    const minRows = 1;
+    const maxRows = 5;
+    
+    const previousRows = e.target.rows;
+    e.target.rows = minRows; // Reset rows to calculate scroll height
+    
+    const currentRows = Math.floor(e.target.scrollHeight / textareaLineHeight);
+    
+    if (currentRows === previousRows) {
+      e.target.rows = currentRows;
+    }
+    
+    if (currentRows >= maxRows) {
+      e.target.rows = maxRows;
+      e.target.scrollTop = e.target.scrollHeight;
+    }
     
     setInputRows(Math.min(currentRows, maxRows));
   };
@@ -262,11 +336,25 @@ const ChatPage = () => {
     const container = messagesContainerRef.current;
     if (!container) return true;
     
-    const threshold = 100; // Allow small scroll up without disabling auto-scroll
-    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    const tolerance = 10; // pixels of tolerance
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    return scrollHeight - scrollTop - clientHeight <= tolerance;
   }, []);
 
-  // Handle scroll events
+  // Scroll to bottom function
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    if (messagesContainerRef.current && autoScroll) {
+      const { scrollHeight, clientHeight } = messagesContainerRef.current;
+      requestAnimationFrame(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: scrollHeight - clientHeight,
+          behavior
+        });
+      });
+    }
+  }, [autoScroll]);
+
+  // Handle user scroll events
   const handleScroll = useCallback(() => {
     setAutoScroll(isAtBottom());
   }, [isAtBottom]);
@@ -280,7 +368,7 @@ const ChatPage = () => {
     }
   }, [isAtBottom]);
 
-  // Handle touch start events for mobile
+  // Handle touch events for mobile
   const handleTouchStart = useCallback((e) => {
     touchStartRef.current = e.touches[0].clientY;
   }, []);
@@ -368,23 +456,7 @@ const ChatPage = () => {
                 <input
                   type="checkbox"
                   checked={woffyMode}
-                  onChange={() => {
-                    const newMode = !woffyMode;
-                    setWoffyMode(newMode);
-                    
-                    // Add a system message showing the mode change
-                    const systemMessage = {
-                      id: Date.now(),
-                      text: newMode 
-                        ? "🐶 Woffy Mode activated! I'll be a friendly dog assistant now. Woof!" 
-                        : "🤖 Normal Mode activated. I'll be a professional assistant now.",
-                      isUser: false,
-                      isSystem: true,
-                      timestamp: new Date().toLocaleTimeString()
-                    };
-                    
-                    setMessages(prevMessages => [...prevMessages, systemMessage]);
-                  }}
+                  onChange={() => setWoffyMode(prev => !prev)}
                 />
                 <span className="woffy-toggle-slider"></span>
                 <span className="woffy-mode-label">
@@ -392,14 +464,16 @@ const ChatPage = () => {
                 </span>
               </label>
               
-              <Link to="/instructions" className="instruction-badge" title="Configure Woffy and Normal mode instructions">
-                📝
-              </Link>
+              {hasInstruction ? (
+                <Link to="/instructions" className="instruction-badge" title="This AI has custom instructions">
+                  📝
+                </Link>
+              ) : null}
             </div>
-          </div>
+          </div> 
           
-          <div className="messages-container" ref={messagesContainerRef}>
-            <div className="chat-messages prompt-kit-messages">
+          <div className="messages-container prompt-kit-chat-container" ref={messagesContainerRef}>
+            <div className="prompt-kit-messages">
               {messages.map((message) => (
                 <div 
                   key={message.id} 
@@ -437,6 +511,7 @@ const ChatPage = () => {
                             }}
                           />
                         )}
+                        {/* Copy message button removed */}
                       </div>
                     </div>
                   </div>
@@ -464,6 +539,7 @@ const ChatPage = () => {
             </div>
             <div className="prompt-kit-scroll-anchor" ref={messagesEndRef} />
           </div>
+
           
           <form onSubmit={handleSubmit} className="prompt-kit-form">
             <div className="prompt-kit-input-container">
@@ -502,6 +578,7 @@ const ChatPage = () => {
               </button>
             )}
           </form>
+          {/* Backend URL debug display removed */}
         </>
       )}
     </div>

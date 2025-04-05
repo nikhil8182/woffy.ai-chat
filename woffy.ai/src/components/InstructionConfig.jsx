@@ -1,38 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import '../styles/InstructionConfig.css';
 
 const InstructionConfig = () => {
-  const [models, setModels] = useState([]);
-  const [instruction, setInstruction] = useState('');
+  const [woffyInstruction, setWoffyInstruction] = useState('');
+  const [normalInstruction, setNormalInstruction] = useState('');
+  const [activeTab, setActiveTab] = useState('woffy_mode');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
-  
-  const navigate = useNavigate();
 
-  // Fetch available models and instructions on component mount
+  // Fetch instructions on component mount
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Fetch models
-        const modelResponse = await fetch('./model.json');
-        if (!modelResponse.ok) {
-          throw new Error(`Failed to load models: ${modelResponse.statusText}`);
-        }
-        const modelData = await modelResponse.json();
-        const modelArray = Array.isArray(modelData) ? modelData : [];
-        setModels(modelArray);
-        
-        // Fetch saved common instruction
+        // Fetch saved instructions for both modes
         const instructionResponse = await fetch('http://localhost:8000/api/instructions');
         if (instructionResponse.ok) {
           const instructionData = await instructionResponse.json();
-          if (instructionData && instructionData.instruction) {
-            setInstruction(instructionData.instruction);
-          } else {
-            setInstruction('');
+          if (instructionData) {
+            setWoffyInstruction(instructionData.woffy_mode || '');
+            setNormalInstruction(instructionData.normal_mode || '');
           }
         }
       } catch (err) {
@@ -46,10 +35,16 @@ const InstructionConfig = () => {
     loadData();
   }, []);
 
-  // We no longer need handleModelChange since we're using common instructions
-
   const handleInstructionChange = (e) => {
-    setInstruction(e.target.value);
+    if (activeTab === 'woffy_mode') {
+      setWoffyInstruction(e.target.value);
+    } else {
+      setNormalInstruction(e.target.value);
+    }
+  };
+  
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
   };
 
   const handleSubmit = async (e) => {
@@ -58,16 +53,19 @@ const InstructionConfig = () => {
     setIsSaving(true);
     
     try {
+      const currentInstruction = activeTab === 'woffy_mode' ? woffyInstruction : normalInstruction;
+      
       const response = await fetch('http://localhost:8000/api/instructions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instruction: instruction.trim()
+          instruction: currentInstruction.trim(),
+          mode: activeTab
         }),
       });
 
       if (response.ok) {
-        showNotification('success', 'Common instruction saved successfully!');
+        showNotification('success', `${activeTab === 'woffy_mode' ? 'Woffy Mode' : 'Normal Mode'} instruction saved successfully!`);
       } else {
         const data = await response.json();
         showNotification('error', data.detail || 'Failed to save instruction');
@@ -94,70 +92,69 @@ const InstructionConfig = () => {
       {isLoading ? (
         <div className="loading">
           <div className="loader"></div>
-          <p>Loading models and instructions...</p>
+          <p>Loading instructions...</p>
         </div>
       ) : (
         <div className="instruction-config-content">
           <div className="instruction-config-card">
-            <h2 className="instruction-config-title">AI Instructions Configuration</h2>
+            <div className="card-header">
+              <h2>Edit AI Instructions</h2>
+              <p className="header-subtitle">Configure instructions for each personality mode</p>
+            </div>
             
-            {models.length === 0 ? (
-              <div className="no-models-message">
-                <p>No AI models found. Please add a model first.</p>
-                <Link to="/add-model" className="add-model-button">
-                  Add Model
-                </Link>
+            <div className="tabs">
+              <button 
+                className={`tab-button ${activeTab === 'woffy_mode' ? 'active' : ''}`}
+                onClick={() => handleTabChange('woffy_mode')}
+                type="button"
+              >
+                Woffy Mode
+              </button>
+              <button 
+                className={`tab-button ${activeTab === 'normal_mode' ? 'active' : ''}`}
+                onClick={() => handleTabChange('normal_mode')}
+                type="button"
+              >
+                Normal Mode
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="instruction">
+                  {activeTab === 'woffy_mode' ? 'Woffy Mode' : 'Normal Mode'} Instructions:
+                </label>
+                <textarea
+                  id="instruction"
+                  name="instruction"
+                  rows="8"
+                  value={activeTab === 'woffy_mode' ? woffyInstruction : normalInstruction}
+                  onChange={handleInstructionChange}
+                  placeholder="Enter system instructions here..."
+                  className="instruction-textarea"
+                  disabled={isSaving}
+                  required
+                ></textarea>
+                <p className="help-text">
+                  {activeTab === 'woffy_mode' 
+                    ? "Instructions for Woffy's dog-like personality. These will be used when Woffy Mode is ON." 
+                    : "Instructions for professional AI assistant behavior. These will be used when Woffy Mode is OFF."}
+                </p>
               </div>
-            ) : (
-              <form className="instruction-form" onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label htmlFor="instruction">System Instructions for All Models</label>
-                  <textarea
-                    id="instruction"
-                    className="instruction-textarea"
-                    value={instruction}
-                    onChange={handleInstructionChange}
-                    placeholder="Enter system instructions that will apply to all AI models..."
-                    rows="8"
-                    disabled={isSaving}
-                  />
-                  <p className="description">
-                    These instructions will guide the behavior of all AI models. For example: "You are a helpful assistant specialized in programming."
-                  </p>
-                </div>
-                
-                <div className="available-models">
-                  <h3>Available Models</h3>
-                  <ul className="model-list">
-                    {models.length > 0 ? (
-                      models.map((model, index) => (
-                        <li key={model.api_name || index} className="model-item">
-                          <span className="model-name">{model['name to show']}</span>
-                          {model.description && (
-                            <span className="model-description">{model.description}</span>
-                          )}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="no-models">No models available</li>
-                    )}
-                  </ul>
-                </div>
-                
-                <div className="button-container">
-                  <Link to="/" className="back-button">
-                    Back to Chat
-                  </Link>
-                  <button 
-                    type="submit" 
-                    className="save-button"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Save Instructions'}
-                  </button>
-                </div>
-              </form>
-            )}
+              
+              <div className="button-container">
+                <Link to="/" className="back-button">
+                  Back to Chat
+                </Link>
+                <button 
+                  type="submit" 
+                  className="save-button"
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save Instructions'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
