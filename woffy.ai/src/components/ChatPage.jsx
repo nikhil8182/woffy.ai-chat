@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import ChatAnimation from './ChatAnimation';
 import { Link } from 'react-router-dom';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -327,6 +328,7 @@ const ChatPage = () => {
 
   return (
     <div className="chat-container">
+      <ChatAnimation />
       {isLoading ? (
         <div className="chat-loading">
           <div className="loader"></div>

@@ -1,6 +1,18 @@
 /* ChatPage.css */
 /* Woffy.ai Enhanced UX - Black & Gold Theme */
 
+/* Chat Animation */
+.chat-animation-container {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  z-index: 0; /* Increased from -1 to be more visible while still behind content */
+  pointer-events: none; /* Prevents the animation from blocking clicks */
+}
+
 :root {
   /* Core Colors */
   --primary-bg: #121212;
