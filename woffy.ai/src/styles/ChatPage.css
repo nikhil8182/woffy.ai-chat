@@ -180,6 +180,48 @@ body, html {
   position: relative;
 }
 
+/* Personality Selector Styles */
+.personality-selector {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 10px;
+}
+
+.personality-selector label {
+  color: var(--accent-gold);
+  font-size: 14px;
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.personality-dropdown {
+  background-color: var(--input-bg);
+  color: var(--text-light);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.personality-dropdown:hover {
+  border-color: var(--accent-gold);
+}
+
+.personality-dropdown:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 2px var(--accent-gold-ultralight);
+}
+
+.personality-dropdown option {
+  background-color: var(--secondary-bg);
+  color: var(--text-light);
+  padding: 8px;
+}
+
 /* Woffy Mode Toggle */
 .woffy-toggle,
 .woffy-toggle-container {
@@ -356,6 +398,9 @@ input:checked + .woffy-toggle-slider:before {
   width: 100%;
   scroll-behavior: smooth;
   background-image: radial-gradient(circle at center, rgba(212, 175, 55, 0.03) 0%, transparent 70%);
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+  will-change: transform; /* Hardware acceleration hint */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   
   /* Custom scrollbar */
   scrollbar-width: thin;
@@ -693,6 +738,48 @@ input:checked + .woffy-toggle-slider:before {
   30% {
     transform: translateY(-6px);
   }
+}
+
+/* Streaming message styles */
+.prompt-kit-streaming .prompt-kit-bubble {
+  border-color: var(--accent-gold-light);
+  animation: streamingPulse 2s infinite;
+  position: relative;
+  contain: content; /* Contain repaints to this element */
+  will-change: contents; /* Hint for hardware acceleration */
+  overflow: hidden; /* Prevent layout shifts from long words */
+  word-break: break-word; /* Break words to prevent horizontal scrolling */
+}
+
+/* Streaming indicator */
+.prompt-kit-streaming .prompt-kit-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0.7rem;
+  right: 0.7rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: cursorBlink 1s infinite;
+}
+
+/* Animation for streaming message pulse */
+@keyframes streamingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.05);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+  }
+}
+
+@keyframes cursorBlink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* Input form */
@@ -1328,7 +1415,9 @@ input:checked + .woffy-toggle-slider:before {
 .markdown-content {
   font-family: 'Arial', sans-serif;
   line-height: 1.6;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
   width: 100%;
 }
 
@@ -1430,8 +1519,6 @@ input:checked + .woffy-toggle-slider:before {
 .markdown-content pre.hljs {
   position: relative;
 }
-
-
 
 .markdown-content pre code {
   background-color: transparent;
@@ -1541,4 +1628,17 @@ input:checked + .woffy-toggle-slider:before {
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
   }
+}
+
+/* Ensure streaming content doesn't cause layout shifts */
+.prompt-kit-streaming .message-content-wrapper {
+  min-height: 24px; /* Minimum height to reduce layout shifts */
+}
+
+/* Base styles for markdown content */
+.markdown-content {
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }

@@ -7,17 +7,21 @@
 - [ ] Create custom animations for message transitions
 - [ ] Implement typing indicators when AI is "thinking"
 - [ ] Add ability to customize the UI theme colors
-- [ ] Create a mobile-optimized layout for smaller screens
+- [ ] Create a mobile-optimized layout for smaller screens with gesture controls
 - [ ] Add drag-and-drop file uploads for sending files to AI
+- [ ] Implement optimistic UI updates for smoother experience
 
 ### Features
 - [ ] Add message search functionality
-- [ ] Implement chat history with local storage
-- [ ] Create conversation export functionality (PDF, Markdown)
-- [ ] Add voice input option for messages
+- [ ] Implement chat history with local storage and management
+- [ ] Create conversation export functionality (PDF, Markdown, Text)
+- [ ] Add voice input and text-to-speech output for messages
 - [ ] Implement message tagging/categorization
 - [ ] Add ability to save favorite responses
 - [ ] Create conversation templates for quick starts
+- [ ] Implement message threading for complex discussions
+- [ ] Add real-time collaborative chat capabilities
+- [ ] Create local storage fallback for offline viewing
 
 ### Accessibility
 - [ ] Ensure WCAG 2.1 AA compliance
@@ -39,8 +43,11 @@
 - [ ] Implement streaming responses for faster initial response time
 - [ ] Create fallback mechanisms for API outages
 - [ ] Add function calling capabilities
-- [ ] Implement context length optimization
+- [ ] Implement context length optimization and manual context control
 - [ ] Create prompt templates library
+- [ ] Add model switching during conversations
+- [ ] Implement message citation for AI responses
+- [ ] Add custom persistent instructions for all conversations
 
 ### Security
 - [ ] Add input sanitization for all user inputs
@@ -94,3 +101,6 @@
 - [ ] Implement Woffy mode memory to remember conversation style
 - [ ] Create visual indicator for active personality mode
 - [ ] Add ability to customize Woffy's personality traits
+- [ ] Enhance code syntax highlighting with language detection
+- [ ] Implement full markdown support in both user and AI messages
+- [ ] Add graceful degradation when API rate limits are reached

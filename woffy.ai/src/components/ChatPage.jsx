@@ -31,13 +31,30 @@ renderer.code = function(code, language) {
 marked.setOptions({ renderer });
 
 // Helper function to format messages for API
-const formatMessagesForApi = (msgs) => {
-  return msgs
-    .filter(msg => !msg.isSystem) // Exclude system messages
+const formatMessagesForApi = (msgs, mode) => {
+  // Create personality-specific system instructions
+  const personalityInstructions = {
+    'puppy': "You are Woffy, a cute and playful puppy assistant. Be enthusiastic, friendly, and use a playful tone. Occasionally use phrases like 'woof!' and dog-related metaphors. Keep your explanations simple and cheerful. Use exclamation marks frequently and express excitement!",
+    'assistant': "You are Woffy, a professional and intelligent AI assistant. Provide clear, helpful, and comprehensive information in a polite and friendly tone. Focus on accuracy and usefulness in your responses.",
+    'programmer': "You are Woffy, a technical and code-focused programming assistant. Prioritize precise technical explanations and code examples. Focus on best practices, clean code architecture, and efficient solutions. Include relevant code snippets when appropriate and explain complex concepts with technical accuracy."
+  };
+  
+  // Add personality-specific system message at the beginning
+  const systemMessage = {
+    role: 'system',
+    content: personalityInstructions[mode]
+  };
+  
+  // Format regular messages (excluding system UI messages and hidden messages)
+  const formattedMessages = msgs
+    .filter(msg => !msg.isSystem && !msg.isHidden) // Exclude system UI messages and hidden messages
     .map(msg => ({
       role: msg.isUser ? 'user' : 'assistant',
       content: msg.text,
     }));
+  
+  // Return system message followed by conversation messages
+  return [systemMessage, ...formattedMessages];
 };
 
 const ChatPage = () => {
@@ -48,16 +65,41 @@ const ChatPage = () => {
   const [error, setError] = useState(null); // Add error state
   const [inputRows, setInputRows] = useState(1); // Track textarea rows
   const [autoScroll, setAutoScroll] = useState(true); // Track if auto-scrolling is enabled
+  const [personalityMode, setPersonalityMode] = useState('assistant'); // Default to intelligent assistant
+  const [isStreaming, setIsStreaming] = useState(false); // Track if we're currently streaming a response
+  const [streamingMessageId, setStreamingMessageId] = useState(null); // ID of the message being streamed
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const touchStartRef = useRef(null); // Track touch start position for mobile
 
+  // Personality mode options
+  const personalityModes = {
+    'puppy': {
+      name: 'Cute Puppy',
+      description: 'Playful, friendly and cute puppy assistant',
+      greeting: 'Woof woof! Hi there! I\'m Woffy, your cute puppy assistant! I\'m super excited to help you today! What can I do for you?',
+      avatar: '🐶', // Puppy emoji
+    },
+    'assistant': {
+      name: 'Intelligent Assistant',
+      description: 'Professional, helpful and intelligent assistant',
+      greeting: 'Hello! I\'m Woffy, your intelligent AI assistant. How can I help you today?',
+      avatar: '🤖', // Robot emoji for intelligent assistant
+    },
+    'programmer': {
+      name: 'Programmer',
+      description: 'Technical, precise and code-focused programmer',
+      greeting: 'Hello! I\'m Woffy, your programming assistant. I can help you with code, debugging, and technical questions. What are you working on today?',
+      avatar: '👨‍💻', // Programmer emoji
+    }
+  };
+  
   // Hardcoded model information (hidden from user)
   const hardcodedModel = {
     'name to show': 'Woffy',
     'api_name': 'openai/gpt-4o-search-preview', // Hidden from UI
-    'description': 'Your friendly AI dog assistant',
+    'description': personalityModes[personalityMode].description,
   };
 
   // Initialize chat and fetch instructions on component mount
@@ -67,8 +109,8 @@ const ChatPage = () => {
       setIsLoading(true);
       
       try {
-        // Add an initial AI greeting
-        const greeting = `Hello! I'm Woffy, your friendly AI assistant. How can I help you today?`;
+        // Add an initial AI greeting based on selected personality
+        const greeting = personalityModes[personalityMode].greeting;
         setMessages([{
           id: Date.now(),
           text: greeting,
@@ -91,7 +133,7 @@ const ChatPage = () => {
     return () => {
       window.removeEventListener('resize', handleWindowResize);
     };
-  }, []);
+  }, [personalityMode]); // Re-initialize when personality changes
 
   // Window resize handler for responsive adjustments
   const handleWindowResize = useCallback(() => {
@@ -99,9 +141,12 @@ const ChatPage = () => {
   }, []);
 
   // Function to scroll to bottom of chat  
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((isStreamingUpdate = false) => {
     if (autoScroll && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Use smooth scrolling for normal messages, but instant for streaming updates
+      // This prevents the "jumpy" feel during streaming
+      const behavior = isStreamingUpdate ? 'auto' : 'smooth';
+      messagesEndRef.current.scrollIntoView({ behavior });
     }
   }, [autoScroll]);
 
@@ -116,26 +161,41 @@ const ChatPage = () => {
     setInputRows(Math.min(currentRows, maxRows));
   };
 
-  const handleSubmit = async (e) => { // Make handleSubmit async
+  // Allow optional message text and hidden flag for personality changes
+  const handleSubmit = async (e, overrideMessage = null, isHidden = false) => {
     e.preventDefault();
-    if (inputValue.trim() === '' || isSending || isLoading) return;
+    
+    // If not a hidden message, validate normal input
+    if (!isHidden && (inputValue.trim() === '' || isSending || isLoading)) return;
 
     setError(null); // Clear previous errors
     const userMessageId = Date.now();
+    
+    // Use override message if provided (for personality changes)
+    const messageText = overrideMessage || inputValue;
+    
+    // Create user message (only add to visible messages if not hidden)
     const newUserMessage = {
       id: userMessageId,
-      text: inputValue,
+      text: messageText,
       isUser: true,
+      isHidden: isHidden
     };
 
-    // Add user message to state immediately
+    // For hidden messages (like personality changes), only add to API processing
+    // but don't show in the UI
+    if (!isHidden) {
+      // Add user message to state immediately for visible messages
+      setMessages(currentMessages => [...currentMessages, newUserMessage]);
+      setInputValue('');
+    }
+    
+    // Use messages with the hidden message for API
     const updatedMessages = [...messages, newUserMessage];
-    setMessages(updatedMessages); 
-    setInputValue('');
     setIsSending(true);
 
     // --- Start API Call --- 
-    const messagesToSend = formatMessagesForApi(updatedMessages); // Format messages for backend
+    const messagesToSend = formatMessagesForApi(updatedMessages, personalityMode); // Include personality mode
     const modelApiName = hardcodedModel.api_name;
 
     try {
@@ -146,6 +206,21 @@ const ChatPage = () => {
       // Log the URL being used for debugging
       console.log("Sending request to:", backendUrl);
 
+      // Create a placeholder message for streaming
+      const streamingId = Date.now() + Math.floor(Math.random() * 1000); // Add randomness to ensure uniqueness
+      const streamingMessage = {
+        id: streamingId,
+        text: '',  // Empty text that will be filled as chunks arrive
+        isUser: false,
+        isStreaming: true
+      };
+      
+      // Add empty streaming message to state immediately
+      setMessages(currentMessages => [...currentMessages, streamingMessage]);
+      setStreamingMessageId(streamingId);
+      setIsStreaming(true);
+      
+      // Add stream: true parameter to request streaming response
       const response = await fetch(backendUrl, {
         method: 'POST',
         headers: {
@@ -153,13 +228,17 @@ const ChatPage = () => {
         },
         body: JSON.stringify({
           model: modelApiName,
-          messages: messagesToSend
+          messages: messagesToSend,
+          stream: true  // Request streaming response
         }),
       });
 
       let responseToAdd; // To store the message object to add to state
 
       if (!response.ok) {
+        // Clear streaming states if there's an error
+        setIsStreaming(false);
+        setStreamingMessageId(null);
         let errorDetail = 'Failed to get response from AI.';
         try {
           const errorData = await response.json();
@@ -178,7 +257,7 @@ const ChatPage = () => {
             console.error('Rate limit error:', errorDetail);
             setError(friendlyMessage);
             responseToAdd = {
-              id: Date.now(),
+              id: Date.now() + Math.floor(Math.random() * 1000), // Ensure unique IDs
               text: friendlyMessage,
               isUser: false,
               isSystem: true
@@ -188,7 +267,7 @@ const ChatPage = () => {
             setError(`Error ${response.status}: ${errorDetail}`);
             // Create an error message object to display in chat
             responseToAdd = {
-              id: Date.now(),
+              id: Date.now() + Math.floor(Math.random() * 1000), // Ensure unique IDs
               text: `Error: ${errorDetail}`,
               isUser: false,
               isSystem: true, // Show backend errors as system messages
@@ -201,7 +280,7 @@ const ChatPage = () => {
           setError(`Error ${response.status}: ${errorDetail}`);
           // Create an error message object to display in chat
           responseToAdd = {
-            id: Date.now(),
+            id: Date.now() + Math.floor(Math.random() * 1000), // Ensure unique IDs
             text: `Error: ${errorDetail}`,
             isUser: false,
             isSystem: true // Show backend errors as system messages
@@ -209,24 +288,122 @@ const ChatPage = () => {
         }
 
       } else {
-        // Process successful response
-        const backendMessage = await response.json(); // { role: 'assistant', content: '...' }
-        // Create a message object for the chat state
-        responseToAdd = {
-          id: Date.now(), 
-          text: backendMessage.content,
-          isUser: false, // AI response is never from the user
-        };
+        try {
+          // Check if we have a streaming response
+          const isStreamingResponse = response.headers.get('content-type')?.includes('text/event-stream');
+          
+          if (isStreamingResponse) {
+            // Process streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedText = '';
+            
+            // Process stream chunks as they arrive
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              // Decode chunk and add to accumulated text
+              const chunk = decoder.decode(value, { stream: true });
+              
+              // Process the chunk to extract actual text
+              // Expected format: data: {"content":"chunk text here"}
+              const lines = chunk.split('\n');
+              for (const line of lines) {
+                if (line.startsWith('data:') && !line.includes('[DONE]')) {
+                  try {
+                    // Extract content from JSON
+                    const jsonStr = line.slice(5).trim(); // Remove 'data: ' prefix
+                    if (jsonStr) {
+                      const jsonData = JSON.parse(jsonStr);
+                      if (jsonData.content) {
+                        accumulatedText += jsonData.content;
+                        
+                        // Use a slightly larger batch size before updating UI
+                        // This reduces the number of renders and scroll operations
+                        if (jsonData.content.length > 3 || jsonData.content.includes('\n')) {
+                          // Update the streaming message with new content
+                          setMessages(currentMessages => 
+                            currentMessages.map(msg => 
+                              msg.id === streamingId ? 
+                                { ...msg, text: accumulatedText } : 
+                                msg
+                            )
+                          );
+                        }
+                      }
+                    }
+                  } catch (jsonError) {
+                    console.error('Error parsing streaming JSON:', jsonError);
+                  }
+                }
+              }
+            }
+            
+            // Create the final message object with complete content
+            responseToAdd = {
+              id: streamingId,
+              text: accumulatedText,
+              isUser: false,
+            };
+            
+            // Replace the streaming message with the final version
+            setMessages(currentMessages => 
+              currentMessages.map(msg => 
+                msg.id === streamingId ? responseToAdd : msg
+              )
+            );
+          } else {
+            // Fallback to non-streaming response if server doesn't support streaming
+            const backendMessage = await response.json(); // { role: 'assistant', content: '...' }
+            
+            // Create a message object for the chat state
+            responseToAdd = {
+              id: streamingMessageId || Date.now() + Math.floor(Math.random() * 1000), 
+              text: backendMessage.content,
+              isUser: false, // AI response is never from the user
+            };
+            
+            // If we had a streaming placeholder, replace it; otherwise add new message
+            if (streamingMessageId) {
+              setMessages(currentMessages => 
+                currentMessages.map(msg => 
+                  msg.id === streamingMessageId ? responseToAdd : msg
+                )
+              );
+            } else {
+              setMessages(currentMessages => [...currentMessages, responseToAdd]);
+            }
+          }
+        } catch (streamError) {
+          console.error('Error processing stream:', streamError);
+          // Handle streaming errors
+          responseToAdd = {
+            id: streamingMessageId ? (streamingMessageId + 1) : (Date.now() + Math.floor(Math.random() * 1000)),
+            text: `Error processing response: ${streamError.message}`,
+            isUser: false,
+            isSystem: true
+          };
+          
+          // Replace streaming message with error or add new error message
+          if (streamingMessageId) {
+            setMessages(currentMessages => 
+              currentMessages.map(msg => 
+                msg.id === streamingMessageId ? responseToAdd : msg
+              )
+            );
+          } else {
+            setMessages(currentMessages => [...currentMessages, responseToAdd]);
+          }
+        }
       }
-      // Add the AI's response (or error message) to the state
-      setMessages(currentMessages => [...currentMessages, responseToAdd]);
 
     } catch (err) {
       console.error('Network or other error sending message:', err);
       setError(`Network Error: ${err.message}`);
       // Create a network error message object
       const networkErrorResponse = {
-        id: Date.now(), 
+        id: Date.now() + Math.floor(Math.random() * 1000), // Ensure unique IDs
         text: `Network Error: Could not reach AI service. (${err.message})`,
         isUser: false,
         isSystem: true, // Show network errors as system messages
@@ -234,6 +411,8 @@ const ChatPage = () => {
       setMessages(currentMessages => [...currentMessages, networkErrorResponse]);
     } finally {
       setIsSending(false); // Stop loading indicator regardless of success/failure
+      setIsStreaming(false); // Clear streaming state
+      setStreamingMessageId(null); // Clear streaming message ID
       // Optional: Focus back on input field only on success?
       // inputRef.current?.focus(); 
     }
@@ -310,8 +489,10 @@ const ChatPage = () => {
 
   // Auto-scroll when messages change
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    // Don't use smooth scrolling for streaming updates to reduce visual jitter
+    const isStreamingUpdate = isStreaming;
+    scrollToBottom(isStreamingUpdate);
+  }, [messages, scrollToBottom, isStreaming]);
   
 
 
@@ -320,6 +501,28 @@ const ChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+    }
+  };
+
+  // Handle mode changes between different personalities
+  const handlePersonalityChange = (e) => {
+    const newMode = e.target.value;
+    
+    // Only proceed if the mode is actually changing
+    if (newMode !== personalityMode) {
+      // Add a system message indicating the mode change
+      setMessages(currentMessages => [
+        ...currentMessages,
+        {
+          id: Date.now(),
+          text: `Switching to ${personalityModes[newMode].name} mode...`,
+          isUser: false,
+          isSystem: true
+        }
+      ]);
+      
+      // Update the personality mode state
+      setPersonalityMode(newMode);
     }
   };
 
@@ -347,22 +550,36 @@ const ChatPage = () => {
       ) : (
         <>
           <div className="chat-controls">
-            {/* Woffy Mode toggle removed */}
+            <div className="personality-selector">
+              <label htmlFor="personality-mode">Woffy Mode:</label>
+              <select 
+                id="personality-mode" 
+                value={personalityMode}
+                onChange={handlePersonalityChange}
+                className="personality-dropdown"
+              >
+                <option value="puppy">Cute Puppy</option>
+                <option value="assistant">Intelligent Assistant</option>
+                <option value="programmer">Programmer</option>
+              </select>
+            </div>
           </div>
           
           <div className="messages-container" ref={messagesContainerRef}>
             <div className="chat-messages prompt-kit-messages">
-              {messages.map((message) => (
+              {messages
+                .filter(message => !message.isHidden) // Filter out hidden messages from UI
+                .map((message) => (
                 <div 
                   key={message.id} 
-                  className={`prompt-kit-message ${message.isUser ? 'prompt-kit-user-message' : 'prompt-kit-ai-message'} ${message.isSystem ? 'prompt-kit-system-message' : ''}`}
+                  className={`prompt-kit-message ${message.isUser ? 'prompt-kit-user-message' : 'prompt-kit-ai-message'} ${message.isSystem ? 'prompt-kit-system-message' : ''} ${message.isStreaming ? 'prompt-kit-streaming' : ''}`}
                 >
                   {!message.isSystem && (
                     <div className="prompt-kit-avatar">
                       {message.isUser ? (
                         <div className="prompt-kit-user-avatar">👤</div>
                       ) : (
-                        <div className="prompt-kit-assistant-avatar">🐶</div>
+                        <div className="prompt-kit-assistant-avatar">{personalityModes[personalityMode].avatar}</div>
                       )}
                     </div>
                   )}
@@ -394,15 +611,19 @@ const ChatPage = () => {
                   </div>
                 </div>
               ))}
-              {isSending && (
+              {/* Only show typing indicator when sending but not streaming */}
+              {isSending && !isStreaming && (
                 <div className="prompt-kit-message prompt-kit-ai-message prompt-kit-typing">
                   <div className="prompt-kit-avatar">
-                    <div className="prompt-kit-assistant-avatar">🐶</div>
+                    <div className="prompt-kit-assistant-avatar">{personalityModes[personalityMode].avatar}</div>
                   </div>
                   <div className="prompt-kit-content">
                     <div className="prompt-kit-header">
                       <div className="prompt-kit-name">
                         {hardcodedModel['name to show']}
+                      </div>
+                      <div className="prompt-kit-timestamp">
+                        {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </div>
                     </div>
                     <div className="prompt-kit-bubble prompt-kit-typing-bubble">

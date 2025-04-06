@@ -1,8 +1,11 @@
 import os
+import json
+import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List
+from typing import List, AsyncGenerator, Optional
 from dotenv import load_dotenv
 from openai import OpenAI, APIError
 import logging
@@ -20,8 +23,16 @@ app = FastAPI(title="Woffy.ai API", description="Backend API for Woffy.ai chat i
 # Allow requests from your frontend development server
 origins = [
     "http://localhost:5173",         # Local React dev server
+    "http://localhost:5174",         # Vite may use alternative ports
+    "http://localhost:5175",         # Vite may use alternative ports
+    "http://localhost:5176",         # Vite may use alternative ports
+    "http://localhost:5177",         # Vite may use alternative ports
     "http://localhost:8000",         # Local FastAPI server (if accessing API directly)
     "http://127.0.0.1:5173",        # Alternative local dev
+    "http://127.0.0.1:5174",        # Alternative local dev with different port
+    "http://127.0.0.1:5175",        # Alternative local dev with different port
+    "http://127.0.0.1:5176",        # Alternative local dev with different port
+    "http://127.0.0.1:5177",        # Alternative local dev with different port
     "https://woffy-ai-chat.onrender.com", # Deployed Frontend URL
     "https://chat.woffy.ai",           # Deployed Frontend URL (Custom Domain)
     # Add any other origins if needed
@@ -57,19 +68,25 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
+    stream: Optional[bool] = False
     woffy_mode: bool = False  # Default to standard mode
 
 # --- API Endpoints --- 
-@app.post("/api/chat", response_model=ChatMessage)
+@app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
-    """Receives chat messages and proxies the request to OpenAI."""
+    """Receives chat messages and proxies the request to OpenAI.
+    Supports both streaming and non-streaming responses.
+    """
     if not openai_api_key:
          raise HTTPException(status_code=500, detail="Server configuration error: API key not set.")
-
+    
+    # Check if streaming is requested
+    stream_response = request.stream if hasattr(request, 'stream') else False
+    
     try:
         # Always use GPT-4o regardless of model requested
         model_to_use = "gpt-4o-search-preview"
-        logger.info(f"Processing chat request with model: {model_to_use}")
+        logger.info(f"Processing chat request with model: {model_to_use}, streaming: {stream_response}")
         
         # Convert the messages to the format required by the API
         messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
@@ -77,6 +94,14 @@ async def chat_endpoint(request: ChatRequest):
         # Log the number of messages being sent
         logger.info(f"Sending {len(messages)} messages to OpenAI")
         
+        # Handle streaming response
+        if stream_response:
+            return StreamingResponse(
+                stream_openai_response(model_to_use, messages),
+                media_type="text/event-stream"
+            )
+        
+        # For non-streaming, use the standard approach
         # Call the OpenAI API
         completion = client.chat.completions.create(
             model=model_to_use,
@@ -109,6 +134,38 @@ async def chat_endpoint(request: ChatRequest):
     except APIError as e:
         logger.error(f"OpenAI API Error: {e.status_code} - {e.message}")
         raise HTTPException(status_code=e.status_code or 500, detail=f"AI Service Error: {e.message}")
+
+
+async def stream_openai_response(model: str, messages: List[dict]) -> AsyncGenerator[str, None]:
+    """Stream the OpenAI response chunk by chunk."""
+    try:
+        # Create a streaming completion
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            response_format={"type": "text"},
+            stream=True,
+            store=False
+        )
+        
+        # Process each chunk as it arrives
+        for chunk in stream:
+            if chunk.choices and len(chunk.choices) > 0:
+                choice = chunk.choices[0]
+                if choice.delta and hasattr(choice.delta, 'content') and choice.delta.content:
+                    # Format the chunk as a server-sent event
+                    content = choice.delta.content
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                    # Small delay to control the flow rate
+                    await asyncio.sleep(0.01)
+        
+        # Signal the end of the stream
+        yield "data: [DONE]\n\n"
+        
+    except Exception as e:
+        logger.error(f"Error in streaming response: {str(e)}")
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        yield "data: [DONE]\n\n"
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
